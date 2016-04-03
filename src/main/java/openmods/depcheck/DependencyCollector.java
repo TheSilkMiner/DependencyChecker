@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
+import openmods.depcheck.DependencyResolveResult.ClassElement;
 import openmods.depcheck.DependencyResolveResult.MissingDependencies;
 import openmods.depcheck.TargetParser.TargetClassVisitor;
 import openmods.depcheck.TargetParser.TargetModContentsVisitor;
@@ -63,7 +64,7 @@ public class DependencyCollector implements TargetModVisitor {
 
                 for (String version : missingVersions) {
                     final MissingDependencies missingDeps = result.getOrCreate(mod.modId, version);
-                    missingDeps.missingFields.put(targetClsName, requiredField);
+                    missingDeps.missingFields.put(targetClsName, new ClassElement<>(requiredCls, requiredField));
                 }
             } else {
                 logger.trace("Field dependency {} does not belong to any known mod, discarding", requiredField);
@@ -82,7 +83,7 @@ public class DependencyCollector implements TargetModVisitor {
 
                 for (String version : missingVersions) {
                     final MissingDependencies missingDeps = result.getOrCreate(mod.modId, version);
-                    missingDeps.missingMethods.put(targetClsName, requiredMethod);
+                    missingDeps.missingMethods.put(targetClsName, new ClassElement<>(requiredCls, requiredMethod));
                 }
             } else {
                 logger.trace("Method dependency {} does not belong to any known mod, discarding", requiredMethod);

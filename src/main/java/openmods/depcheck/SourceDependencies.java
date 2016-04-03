@@ -1,5 +1,6 @@
 package openmods.depcheck;
 
+import java.util.Collection;
 import java.util.Map;
 import java.util.Optional;
 
@@ -27,5 +28,9 @@ public class SourceDependencies {
 
     public ModInfo getMod(String modId) {
         return mods.get(modId);
+    }
+
+    public Collection<ModInfo> getAllMods() {
+        return mods.values();
     }
 }

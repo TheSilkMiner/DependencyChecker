@@ -42,7 +42,7 @@ public class TargetParser {
 
     public void accept(TargetModVisitor visitor) {
         for (File f : targetsDir.listFiles((f, name) -> new File(f, name).isFile() && name.endsWith(".jar"))) {
-            logger.trace("Scanning target mod jar file {}", f.getAbsolutePath());
+            logger.info("Scanning target mod jar file {}", f.getAbsolutePath());
             final TargetModContentsVisitor fileVisitor = visitor.visitFile(f);
             try {
                 acceptFile(f, fileVisitor);

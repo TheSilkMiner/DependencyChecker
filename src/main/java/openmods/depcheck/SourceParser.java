@@ -83,7 +83,7 @@ public class SourceParser {
     }
 
     private static void scanModDir(SourceDependencies result, File modDir) throws IOException {
-        logger.trace("Scanning source mod directory {}", modDir.getAbsolutePath());
+        logger.info("Scanning source mod directory {}", modDir.getAbsolutePath());
         final File metaFile = new File(modDir, "meta.json");
         try (InputStream input = new FileInputStream(metaFile);
                 Reader reader = new InputStreamReader(input)) {
@@ -97,7 +97,7 @@ public class SourceParser {
     }
 
     private static void scanJarFile(ModInfoMeta meta, ModInfo mod, File jarFile) throws IOException {
-        logger.trace("Scanning source mod jar file {}", jarFile.getAbsolutePath());
+        logger.info("Scanning source mod jar file {}", jarFile.getAbsolutePath());
         String jarFileName = jarFile.getName();
         Optional<String> maybeVersion = meta.patterns.stream()
                 .map(pattern -> pattern.getVersion(jarFileName))
