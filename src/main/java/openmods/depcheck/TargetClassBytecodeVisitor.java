@@ -1,6 +1,6 @@
 package openmods.depcheck;
 
-import java.util.Optional;
+import java.util.function.Consumer;
 
 import openmods.depcheck.TargetParser.TargetClassVisitor;
 import openmods.depcheck.utils.Field;
@@ -17,6 +17,12 @@ public class TargetClassBytecodeVisitor extends ClassVisitor {
         }
 
         @Override
+        public void visitLdcInsn(Object cst) {
+            if (cst instanceof Type)
+                visitType((Type)cst);
+        }
+
+        @Override
         public void visitTypeInsn(int opcode, String type) {
             String clsName = type.replace('/', '.');
             visitor.visitRequiredClass(clsName);
@@ -24,17 +30,17 @@ public class TargetClassBytecodeVisitor extends ClassVisitor {
 
         @Override
         public void visitMultiANewArrayInsn(String desc, int dims) {
-            addClsIfNeeded(Type.getType(desc));
+            visitType(Type.getType(desc));
         }
 
         @Override
         public void visitFieldInsn(int opcode, String owner, String name, String desc) {
-            visitor.visitRequiredField(owner.replace('/', '.'), new Field(name, desc));
+            visitor.visitRequiredField(internalToJava(owner), new Field(name, desc));
         }
 
         @Override
         public void visitMethodInsn(int opcode, String owner, String name, String desc, boolean itf) {
-            visitor.visitRequiredMethod(owner.replace('/', '.'), new Method(name, desc));
+            visitor.visitRequiredMethod(internalToJava(owner), new Method(name, desc));
         }
 
     }
@@ -46,43 +52,44 @@ public class TargetClassBytecodeVisitor extends ClassVisitor {
         this.visitor = visitor;
     }
 
-    private static Optional<String> extractReferenceType(Type type) {
+    private static String internalToJava(String cls) {
+        return cls.replace('/', '.');
+    }
+
+    private static void extractReferenceType(Type type, Consumer<String> typeConsumer) {
         if (type.getSort() == Type.OBJECT) {
-            return Optional.of(type.getClassName());
+            typeConsumer.accept(type.getClassName());
         } else if (type.getSort() == Type.ARRAY)
-            return extractReferenceType(type.getElementType());
-        else {
-            return Optional.empty();
+            extractReferenceType(type.getElementType(), typeConsumer);
+        else if (type.getSort() == Type.METHOD) {
+            extractReferenceType(type.getReturnType(), typeConsumer);
+
+            for (Type argType : type.getArgumentTypes())
+                extractReferenceType(argType, typeConsumer);
         }
     }
 
-    private void addClsIfNeeded(final Type type) {
-        final Optional<String> refType = extractReferenceType(type);
-        refType.ifPresent(visitor::visitRequiredClass);
+    private void visitType(Type type) {
+        extractReferenceType(type, visitor::visitRequiredClass);
     }
 
     @Override
     public void visit(int version, int access, String name, String signature, String superName, String[] interfaces) {
         for (String intf : interfaces)
-            visitor.visitRequiredClass(intf.replace('/', '.'));
+            visitor.visitRequiredClass(internalToJava(intf));
 
-        visitor.visitRequiredClass(superName.replace('/', '.'));
+        visitor.visitRequiredClass(internalToJava(superName));
     }
 
     @Override
     public FieldVisitor visitField(int access, String name, String desc, String signature, Object value) {
-        addClsIfNeeded(Type.getType(desc));
+        visitType(Type.getType(desc));
         return null;
     }
 
     @Override
     public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
-        final Type type = Type.getMethodType(desc);
-        addClsIfNeeded(type.getReturnType());
-
-        for (Type argType : type.getArgumentTypes())
-            addClsIfNeeded(argType);
-
+        visitType(Type.getMethodType(desc));
         return new MethodDependencyVisitor();
     }
 
