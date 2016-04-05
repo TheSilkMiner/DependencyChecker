@@ -69,6 +69,7 @@ public class SourceParser {
 
     private static SourceDependencies getOrCreateSourceDependencies(File cache) {
         if (cache.isFile()) {
+            logger.info("Loading source cache from " + cache.getAbsolutePath());
             try {
                 try (FileInputStream input = new FileInputStream(cache);
                         FSTObjectInput os = new FSTObjectInput(input)) {
@@ -83,13 +84,15 @@ public class SourceParser {
     }
 
     private static void storeCache(File cache, SourceDependencies deps) {
-        try {
-            try (FileOutputStream output = new FileOutputStream(cache);
-                    FSTObjectOutput os = new FSTObjectOutput(output)) {
-                os.writeObject(deps);
+        if (deps.isUpdated()) {
+            try {
+                try (FileOutputStream output = new FileOutputStream(cache);
+                        FSTObjectOutput os = new FSTObjectOutput(output)) {
+                    os.writeObject(deps);
+                }
+            } catch (Throwable t) {
+                logger.error("Failed to store source cache to " + cache.getAbsolutePath(), t);
             }
-        } catch (Throwable t) {
-            logger.error("Failed to store source cache to " + cache.getAbsolutePath(), t);
         }
     }
 

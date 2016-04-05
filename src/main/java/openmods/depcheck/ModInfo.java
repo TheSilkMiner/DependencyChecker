@@ -81,6 +81,8 @@ public class ModInfo implements Serializable {
         }
     }
 
+    private transient boolean isUpdated;
+
     public final String pkgPrefix;
     public final String modId;
 
@@ -96,6 +98,7 @@ public class ModInfo implements Serializable {
     public ModRegistrationContext registerVersion(String version) {
         final boolean isNew = allVersions.add(version);
         Preconditions.checkState(isNew, "Duplicate version '%s' in mod %s", version, modId);
+        isUpdated = true;
         return new ModRegistrationContext(version);
     }
 
@@ -105,6 +108,10 @@ public class ModInfo implements Serializable {
 
     public Set<String> allVersions() {
         return allVersions;
+    }
+
+    public boolean isUpdated() {
+        return isUpdated;
     }
 
     public boolean matchPackage(String pkg) {

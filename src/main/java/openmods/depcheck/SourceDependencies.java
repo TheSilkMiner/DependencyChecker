@@ -32,4 +32,8 @@ public class SourceDependencies implements Serializable {
     public Collection<ModInfo> getAllMods() {
         return mods.values();
     }
+
+    public boolean isUpdated() {
+        return mods.values().stream().anyMatch(ModInfo::isUpdated);
+    }
 }
