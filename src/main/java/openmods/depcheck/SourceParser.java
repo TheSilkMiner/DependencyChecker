@@ -20,6 +20,9 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.annotations.SerializedName;
 
+import de.ruedigermoeller.serialization.FSTObjectInput;
+import de.ruedigermoeller.serialization.FSTObjectOutput;
+
 public class SourceParser {
 
     private static final Logger logger = LoggerFactory.getLogger(SourceParser.class);
@@ -68,7 +71,7 @@ public class SourceParser {
         if (cache.isFile()) {
             try {
                 try (FileInputStream input = new FileInputStream(cache);
-                        ObjectInputStream os = new ObjectInputStream(input)) {
+                        FSTObjectInput os = new FSTObjectInput(input)) {
                     return (SourceDependencies)os.readObject();
                 }
             } catch (Throwable t) {
@@ -82,7 +85,7 @@ public class SourceParser {
     private static void storeCache(File cache, SourceDependencies deps) {
         try {
             try (FileOutputStream output = new FileOutputStream(cache);
-                    ObjectOutputStream os = new ObjectOutputStream(output)) {
+                    FSTObjectOutput os = new FSTObjectOutput(output)) {
                 os.writeObject(deps);
             }
         } catch (Throwable t) {
