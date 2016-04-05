@@ -1,20 +1,24 @@
 package openmods.depcheck.utils;
 
-public class Field {
+import java.io.Serializable;
+
+public class TypedElement implements Serializable {
+
+    private static final long serialVersionUID = 8206186136037881452L;
 
     public final String name;
 
     public final String desc;
 
-    public Field(String name, String desc) {
+    public TypedElement(String name, String desc) {
         this.name = name;
         this.desc = desc;
     }
 
     @Override
     public boolean equals(final Object o) {
-        if (o instanceof Field) {
-            Field other = (Field)o;
+        if (o instanceof TypedElement) {
+            TypedElement other = (TypedElement)o;
             return name.equals(other.name) && desc.equals(other.desc);
         }
 

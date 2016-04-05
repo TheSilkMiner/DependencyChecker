@@ -1,58 +1,20 @@
 package openmods.depcheck;
 
-import java.io.File;
+import java.io.Serializable;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
 
-import openmods.depcheck.utils.Field;
-
-import org.objectweb.asm.commons.Method;
+import openmods.depcheck.utils.TypedElement;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
-public class ModInfo {
-    public final String pkgPrefix;
-    public final String modId;
+public class ModInfo implements Serializable {
 
-    private final Map<String, File> allVersions = Maps.newHashMap();
-
-    public static class ClassVersion {
-        public final String superClass;
-
-        public final Set<String> interfaces;
-
-        private final Set<Method> methods = Sets.newHashSet();
-        private final Set<Field> fields = Sets.newHashSet();
-
-        public ClassVersion(String superClass, Set<String> interfaces) {
-            this.superClass = superClass;
-            this.interfaces = ImmutableSet.copyOf(interfaces);
-        }
-    }
-
-    public static class ClassVersions {
-        public final Map<String, ClassVersion> versions = Maps.newHashMap();
-
-        public void createForVersion(String version, String superClass, Set<String> interfaces) {
-            ClassVersion cv = new ClassVersion(superClass, interfaces);
-            versions.put(version, cv);
-        }
-
-        public ClassVersion getForVersion(String version) {
-            return versions.get(version);
-        }
-    }
-
-    private final Map<String, ClassVersions> classes = Maps.newHashMap();
-
-    public ModInfo(String pkgPrefix, String modId) {
-        this.pkgPrefix = pkgPrefix;
-        this.modId = modId;
-    }
+    private static final long serialVersionUID = -8439947254870180769L;
 
     public class ModRegistrationContext {
         private final String modVersion;
@@ -76,23 +38,73 @@ public class ModInfo {
             cls.createForVersion(modVersion, superClass, interfaces);
         }
 
-        public void registerMethod(String clsName, Method method) {
+        public void registerMethod(String clsName, String name, String desc) {
             final ClassVersions cls = getOrCreateClass(clsName);
             final ClassVersion cv = cls.getForVersion(modVersion);
-            cv.methods.add(method);
+            cv.methods.add(new TypedElement(name, desc));
         }
 
-        public void registerField(String clsName, Field field) {
+        public void registerField(String clsName, String name, String desc) {
             final ClassVersions cls = getOrCreateClass(clsName);
             final ClassVersion cv = cls.getForVersion(modVersion);
-            cv.fields.add(field);
+            cv.fields.add(new TypedElement(name, desc));
         }
     }
 
-    public ModRegistrationContext registerVersion(String version, File source) {
-        final File prev = allVersions.put(version, source);
-        Preconditions.checkState(prev == null, "Duplicate version '%s': %s -> %s", version, prev, source);
+    public static class ClassVersion implements Serializable {
+        private static final long serialVersionUID = 3023800591787115776L;
+
+        public final String superClass;
+
+        public final Set<String> interfaces;
+
+        private final Set<TypedElement> methods = Sets.newHashSet();
+        private final Set<TypedElement> fields = Sets.newHashSet();
+
+        public ClassVersion(String superClass, Set<String> interfaces) {
+            this.superClass = superClass;
+            this.interfaces = ImmutableSet.copyOf(interfaces);
+        }
+    }
+
+    public static class ClassVersions implements Serializable {
+        private static final long serialVersionUID = 2659734086399983238L;
+
+        public final Map<String, ClassVersion> versions = Maps.newHashMap();
+
+        public void createForVersion(String version, String superClass, Set<String> interfaces) {
+            versions.put(version, new ClassVersion(superClass, interfaces));
+        }
+
+        public ClassVersion getForVersion(String version) {
+            return versions.get(version);
+        }
+    }
+
+    public final String pkgPrefix;
+    public final String modId;
+
+    private final Set<String> allVersions = Sets.newHashSet();
+
+    private final Map<String, ClassVersions> classes = Maps.newHashMap();
+
+    public ModInfo(String pkgPrefix, String modId) {
+        this.pkgPrefix = pkgPrefix;
+        this.modId = modId;
+    }
+
+    public ModRegistrationContext registerVersion(String version) {
+        final boolean isNew = allVersions.add(version);
+        Preconditions.checkState(isNew, "Duplicate version '%s' in mod %s", version, modId);
         return new ModRegistrationContext(version);
+    }
+
+    public boolean hasVersion(String version) {
+        return allVersions.contains(version);
+    }
+
+    public Set<String> allVersions() {
+        return allVersions;
     }
 
     public boolean matchPackage(String pkg) {
@@ -129,7 +141,7 @@ public class ModInfo {
         return false;
     }
 
-    private Set<String> matchElement(String cls, Predicate<String> predicate) {
+    private Set<String> selectClassVersions(String cls, Predicate<String> predicate) {
         final ClassVersions classVersions = classes.get(cls);
         if (classVersions == null)
             return Sets.newHashSet();
@@ -145,15 +157,14 @@ public class ModInfo {
         return result;
     }
 
-    public Set<String> matchMethod(String cls, Method method) {
-        return matchElement(cls, version -> isElementInVersion(cls, cv -> cv.methods.contains(method), version));
+    public Set<String> matchMethod(String cls, String name, String desc) {
+        final TypedElement e = new TypedElement(name, desc);
+        return selectClassVersions(cls, version -> isElementInVersion(cls, cv -> cv.methods.contains(e), version));
     }
 
-    public Set<String> matchField(String cls, Field field) {
-        return matchElement(cls, version -> isElementInVersion(cls, cv -> cv.fields.contains(field), version));
+    public Set<String> matchField(String cls, String name, String desc) {
+        final TypedElement e = new TypedElement(name, desc);
+        return selectClassVersions(cls, version -> isElementInVersion(cls, cv -> cv.fields.contains(e), version));
     }
 
-    public Set<String> allVersions() {
-        return allVersions.keySet();
-    }
 }

@@ -7,10 +7,7 @@ import java.util.Enumeration;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
-import openmods.depcheck.utils.Field;
-
 import org.objectweb.asm.ClassReader;
-import org.objectweb.asm.commons.Method;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,9 +18,9 @@ public class TargetParser {
     public interface TargetClassVisitor {
         public void visitRequiredClass(String cls);
 
-        public void visitRequiredField(String cls, Field field);
+        public void visitRequiredField(String cls, String name, String desc);
 
-        public void visitRequiredMethod(String cls, Method method);
+        public void visitRequiredMethod(String cls, String name, String desc);
     }
 
     public interface TargetModContentsVisitor {

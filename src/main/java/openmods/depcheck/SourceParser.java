@@ -64,11 +64,39 @@ public class SourceParser {
         this.topDir = topDir;
     }
 
+    private static SourceDependencies getOrCreateSourceDependencies(File cache) {
+        if (cache.isFile()) {
+            try {
+                try (FileInputStream input = new FileInputStream(cache);
+                        ObjectInputStream os = new ObjectInputStream(input)) {
+                    return (SourceDependencies)os.readObject();
+                }
+            } catch (Throwable t) {
+                logger.error("Failed to load source cache from " + cache.getAbsolutePath(), t);
+            }
+        }
+
+        return new SourceDependencies();
+    }
+
+    private static void storeCache(File cache, SourceDependencies deps) {
+        try {
+            try (FileOutputStream output = new FileOutputStream(cache);
+                    ObjectOutputStream os = new ObjectOutputStream(output)) {
+                os.writeObject(deps);
+            }
+        } catch (Throwable t) {
+            logger.error("Failed to store source cache to " + cache.getAbsolutePath(), t);
+        }
+    }
+
     public SourceDependencies collectAvailableDependencies() {
-        File modsDir = new File(topDir, "mods");
+        final File modsDir = new File(topDir, "mods");
         Preconditions.checkState(modsDir.isDirectory(), "%s is not directory", modsDir.getAbsolutePath());
 
-        SourceDependencies result = new SourceDependencies();
+        final File cache = new File(topDir, "cache.ser");
+
+        final SourceDependencies result = getOrCreateSourceDependencies(cache);
 
         for (File f : modsDir.listFiles()) {
             if (f.isDirectory())
@@ -79,6 +107,7 @@ public class SourceParser {
                 }
         }
 
+        storeCache(cache, result);
         return result;
     }
 
@@ -98,29 +127,33 @@ public class SourceParser {
 
     private static void scanJarFile(ModInfoMeta meta, ModInfo mod, File jarFile) throws IOException {
         logger.info("Scanning source mod jar file {}", jarFile.getAbsolutePath());
-        String jarFileName = jarFile.getName();
-        Optional<String> maybeVersion = meta.patterns.stream()
+        final String jarFileName = jarFile.getName();
+        final Optional<String> maybeVersion = meta.patterns.stream()
                 .map(pattern -> pattern.getVersion(jarFileName))
                 .filter(Optional::isPresent)
                 .map(Optional::get)
                 .findFirst();
 
-        String version = maybeVersion.orElseThrow(() -> new IllegalStateException("File " + jarFile.getAbsolutePath() + " can't be matched"));
+        final String version = maybeVersion.orElseThrow(() -> new IllegalStateException("File " + jarFile.getAbsolutePath() + " can't be matched"));
 
-        final ModRegistrationContext modVersion = mod.registerVersion(version, jarFile);
+        if (mod.hasVersion(version)) {
+            logger.info("Version {} already found in cache", version);
+        } else {
+            final ModRegistrationContext modVersion = mod.registerVersion(version);
 
-        try (ZipFile zipFile = new ZipFile(jarFile)) {
-            final Enumeration<? extends ZipEntry> e = zipFile.entries();
-            while (e.hasMoreElements()) {
-                final ZipEntry entry = e.nextElement();
-                if (entry.isDirectory())
-                    continue;
+            try (ZipFile zipFile = new ZipFile(jarFile)) {
+                final Enumeration<? extends ZipEntry> e = zipFile.entries();
+                while (e.hasMoreElements()) {
+                    final ZipEntry entry = e.nextElement();
+                    if (entry.isDirectory())
+                        continue;
 
-                final String name = entry.getName();
-                if (name.endsWith(".class") && mod.matchPackage(name.replace('/', '.'))) {
-                    logger.trace("Scanning class file {}", name);
-                    try (InputStream zipFileStream = zipFile.getInputStream(entry)) {
-                        scanClassFile(modVersion, zipFileStream);
+                    final String name = entry.getName();
+                    if (name.endsWith(".class") && mod.matchPackage(name.replace('/', '.'))) {
+                        logger.trace("Scanning class file {}", name);
+                        try (InputStream zipFileStream = zipFile.getInputStream(entry)) {
+                            scanClassFile(modVersion, zipFileStream);
+                        }
                     }
                 }
             }

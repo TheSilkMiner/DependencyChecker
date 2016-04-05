@@ -3,10 +3,8 @@ package openmods.depcheck;
 import java.util.function.Consumer;
 
 import openmods.depcheck.TargetParser.TargetClassVisitor;
-import openmods.depcheck.utils.Field;
 
 import org.objectweb.asm.*;
-import org.objectweb.asm.commons.Method;
 
 public class TargetClassBytecodeVisitor extends ClassVisitor {
 
@@ -35,12 +33,12 @@ public class TargetClassBytecodeVisitor extends ClassVisitor {
 
         @Override
         public void visitFieldInsn(int opcode, String owner, String name, String desc) {
-            visitor.visitRequiredField(internalToJava(owner), new Field(name, desc));
+            visitor.visitRequiredField(internalToJava(owner), name, desc);
         }
 
         @Override
         public void visitMethodInsn(int opcode, String owner, String name, String desc, boolean itf) {
-            visitor.visitRequiredMethod(internalToJava(owner), new Method(name, desc));
+            visitor.visitRequiredMethod(internalToJava(owner), name, desc);
         }
 
     }

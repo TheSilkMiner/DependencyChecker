@@ -5,14 +5,12 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
-import openmods.depcheck.DependencyResolveResult.ClassElement;
 import openmods.depcheck.DependencyResolveResult.MissingDependencies;
 import openmods.depcheck.TargetParser.TargetClassVisitor;
 import openmods.depcheck.TargetParser.TargetModContentsVisitor;
 import openmods.depcheck.TargetParser.TargetModVisitor;
-import openmods.depcheck.utils.Field;
+import openmods.depcheck.utils.ClassElement;
 
-import org.objectweb.asm.commons.Method;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,40 +51,40 @@ public class DependencyCollector implements TargetModVisitor {
         }
 
         @Override
-        public void visitRequiredField(String requiredCls, Field requiredField) {
+        public void visitRequiredField(String requiredCls, String fieldName, String fieldDesc) {
             final Optional<ModInfo> maybeMod = availableDependencies.identifyMod(requiredCls);
             if (maybeMod.isPresent()) {
                 final ModInfo mod = maybeMod.get();
-                logger.trace("Adding field dependency {} from {}", requiredField, mod.modId);
+                logger.trace("Adding field dependency {} {} from {}", fieldName, fieldDesc, mod.modId);
 
-                final Set<String> matchingVersions = mod.matchField(requiredCls, requiredField);
+                final Set<String> matchingVersions = mod.matchField(requiredCls, fieldName, fieldDesc);
                 final Set<String> missingVersions = Sets.difference(mod.allVersions(), matchingVersions);
 
                 for (String version : missingVersions) {
                     final MissingDependencies missingDeps = result.getOrCreate(mod.modId, version);
-                    missingDeps.missingFields.put(targetClsName, new ClassElement<>(requiredCls, requiredField));
+                    missingDeps.missingFields.put(targetClsName, new ClassElement(requiredCls, fieldName, fieldDesc));
                 }
             } else {
-                logger.trace("Field dependency {} does not belong to any known mod, discarding", requiredField);
+                logger.trace("Field dependency {} {} does not belong to any known mod, discarding", fieldName, fieldDesc);
             }
         }
 
         @Override
-        public void visitRequiredMethod(String requiredCls, Method requiredMethod) {
+        public void visitRequiredMethod(String requiredCls, String methodName, String methodDesc) {
             final Optional<ModInfo> maybeMod = availableDependencies.identifyMod(requiredCls);
             if (maybeMod.isPresent()) {
                 final ModInfo mod = maybeMod.get();
-                logger.trace("Adding method dependency {} from {}", requiredMethod, mod.modId);
+                logger.trace("Adding method dependency {} {} from {}", methodName, methodDesc, mod.modId);
 
-                final Set<String> matchingVersions = mod.matchMethod(requiredCls, requiredMethod);
+                final Set<String> matchingVersions = mod.matchMethod(requiredCls, methodName, methodDesc);
                 final Set<String> missingVersions = Sets.difference(mod.allVersions(), matchingVersions);
 
                 for (String version : missingVersions) {
                     final MissingDependencies missingDeps = result.getOrCreate(mod.modId, version);
-                    missingDeps.missingMethods.put(targetClsName, new ClassElement<>(requiredCls, requiredMethod));
+                    missingDeps.missingMethods.put(targetClsName, new ClassElement(requiredCls, methodName, methodDesc));
                 }
             } else {
-                logger.trace("Method dependency {} does not belong to any known mod, discarding", requiredMethod);
+                logger.trace("Method dependency {} {} does not belong to any known mod, discarding", methodName, methodDesc);
             }
         }
 
