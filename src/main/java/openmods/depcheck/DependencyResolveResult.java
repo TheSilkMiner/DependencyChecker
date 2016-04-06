@@ -1,37 +1,73 @@
 package openmods.depcheck;
 
 import java.io.File;
+import java.util.Collection;
+import java.util.Map;
+import java.util.Set;
 
-import openmods.depcheck.utils.ClassElement;
+import openmods.depcheck.utils.TypedElement;
 
 import com.google.common.collect.*;
 
 public class DependencyResolveResult {
 
-    public static class MissingDependencies {
-        public final Multimap<String, String> missingClasses = HashMultimap.create();
+    public interface MissingDependencySink {
+        public void acceptMissingClass(String targetCls, String sourceMod, String sourceCls, Set<String> versions);
 
-        public final Multimap<String, ClassElement> missingMethods = HashMultimap.create();
+        public void acceptMissingElement(String targetCls, String sourceMod, String sourceCls, TypedElement sourceElement, Set<String> versions);
+    }
 
-        public final Multimap<String, ClassElement> missingFields = HashMultimap.create();
+    private static class MissingSourceClass {
+        public final Set<String> missingClassVersions = Sets.newHashSet();
+        public final SetMultimap<TypedElement, String> missingElementVersions = HashMultimap.create();
+    }
+
+    public static class MissingSourceDependencies {
+        private final Map<String, MissingSourceClass> missingClasses = Maps.newHashMap();
+
+        private MissingSourceClass getForClass(String cls) {
+            return missingClasses.computeIfAbsent(cls, k -> new MissingSourceClass());
+        }
+
+        public void addMissingClass(String sourceClass, Collection<String> versions) {
+            getForClass(sourceClass).missingClassVersions.addAll(versions);
+        }
+
+        public void addMissingElement(String sourceClass, TypedElement element, Collection<String> versions) {
+            getForClass(sourceClass).missingElementVersions.putAll(element, versions);
+        }
+    }
+
+    public static class MissingClassDependencies {
+        private final Map<String, MissingSourceDependencies> modToMissingDependencies = Maps.newHashMap();
+
+        public MissingSourceDependencies getOrCreate(String sourceMod) {
+            return modToMissingDependencies.computeIfAbsent(sourceMod, k -> new MissingSourceDependencies());
+        }
     }
 
     public final File jarFile;
-
-    public final Table<String, String, MissingDependencies> missingDependencies = HashBasedTable.create();
+    private final Map<String, MissingClassDependencies> missingTargetClassDependencies = Maps.newHashMap();
 
     public DependencyResolveResult(File jarFile) {
         this.jarFile = jarFile;
     }
 
-    public MissingDependencies getOrCreate(String modId, String version) {
-        MissingDependencies result = missingDependencies.get(modId, version);
-        if (result == null) {
-            result = new MissingDependencies();
-            missingDependencies.put(modId, version, result);
-        }
-
-        return result;
+    public MissingClassDependencies getOrCreate(String targetClass) {
+        return missingTargetClassDependencies.computeIfAbsent(targetClass, k -> new MissingClassDependencies());
     }
 
+    public void visit(MissingDependencySink sink) {
+        missingTargetClassDependencies.forEach((targetCls, missingTargetDeps) -> {
+            missingTargetDeps.modToMissingDependencies.forEach((sourceMod, missingSourceDeps) -> {
+                missingSourceDeps.missingClasses.forEach((sourceCls, missingSourceClass) -> {
+                    if (!missingSourceClass.missingClassVersions.isEmpty())
+                        sink.acceptMissingClass(targetCls, sourceMod, sourceCls, missingSourceClass.missingClassVersions);
+
+                    Multimaps.asMap(missingSourceClass.missingElementVersions)
+                            .forEach((sourceElement, versions) -> sink.acceptMissingElement(targetCls, sourceMod, sourceCls, sourceElement, versions));
+                });
+            });
+        });
+    }
 }

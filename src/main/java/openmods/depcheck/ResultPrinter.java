@@ -8,12 +8,13 @@ import java.io.*;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import openmods.depcheck.DependencyResolveResult.MissingDependencies;
+import openmods.depcheck.DependencyResolveResult.MissingDependencySink;
+import openmods.depcheck.utils.TypedElement;
 
 import com.google.common.base.Charsets;
+import com.google.common.base.Joiner;
 import com.google.common.base.Throwables;
 import com.google.common.collect.*;
-import com.google.common.collect.Table.Cell;
 
 public class ResultPrinter {
 
@@ -37,6 +38,72 @@ public class ResultPrinter {
                     "div.missing:target {" +
                     "    display: block;" +
                     "}";
+
+    private static class MissingSourceDependencies {
+        public final Set<String> missingClasses = Sets.newHashSet();
+        public final SetMultimap<String, TypedElement> missingElements = HashMultimap.create();
+    }
+
+    private static class MissingTargetDependencies {
+        private final Map<String, MissingSourceDependencies> targetClass = Maps.newHashMap();
+
+        private MissingSourceDependencies get(String targetCls) {
+            return targetClass.computeIfAbsent(targetCls, k -> new MissingSourceDependencies());
+        }
+    }
+
+    private static class SourceModCompatibilityTable {
+        // (target, version) -> missing stuff
+        public final Table<File, String, MissingTargetDependencies> missingDependencies = HashBasedTable.create();
+
+        public MissingTargetDependencies getOrCreate(File target, String sourceVersion) {
+            MissingTargetDependencies result = missingDependencies.get(target, sourceVersion);
+            if (result == null) {
+                result = new MissingTargetDependencies();
+                missingDependencies.put(target, sourceVersion, result);
+            }
+
+            return result;
+        }
+    }
+
+    private static class CompatibilityData {
+        private final Set<File> allTargets = Sets.newHashSet();
+        private final Map<String, SourceModCompatibilityTable> modCompatibilityTable = Maps.newHashMap();
+
+        private SourceModCompatibilityTable get(String sourceMod) {
+            return modCompatibilityTable.computeIfAbsent(sourceMod, k -> new SourceModCompatibilityTable());
+        }
+
+        private MissingDependencySink createForTarget(File target) {
+            return new MissingDependencySink() {
+                @Override
+                public void acceptMissingClass(String targetCls, String sourceMod, String sourceCls, Set<String> versions) {
+                    final SourceModCompatibilityTable modDeps = get(sourceMod);
+                    for (String version : versions)
+                        modDeps.getOrCreate(target, version).get(targetCls).missingClasses.add(sourceCls);
+                }
+
+                @Override
+                public void acceptMissingElement(String targetCls, String sourceMod, String sourceCls, TypedElement sourceElement, Set<String> versions) {
+                    final SourceModCompatibilityTable modDeps = get(sourceMod);
+                    for (String version : versions)
+                        modDeps.getOrCreate(target, version).get(targetCls).missingElements.put(sourceCls, sourceElement);
+                }
+            };
+        }
+
+        public void load(DependencyResolveResult deps) {
+            allTargets.add(deps.jarFile);
+            deps.visit(createForTarget(deps.jarFile));
+        }
+    }
+
+    private static CompatibilityData convertData(List<DependencyResolveResult> results) {
+        final CompatibilityData result = new CompatibilityData();
+        results.forEach(result::load);
+        return result;
+    }
 
     private static String createAnchor(String target, String source, String version) {
         return target + "__" + source + "__" + version;
@@ -65,45 +132,20 @@ public class ResultPrinter {
 
     private static List<Tag> createEntries(SourceDependencies availableDependencies, List<DependencyResolveResult> results) {
         List<Tag> tags = Lists.newArrayList();
-        createSourceEntries(tags, availableDependencies, results);
-        createTargetEntries(tags, availableDependencies, results);
-        createMissingDependenciesEntries(tags, results);
+        final CompatibilityData data = convertData(results);
+        createSourceEntries(tags, availableDependencies, data);
+        createMissingDependenciesEntries(tags, data);
         return tags;
 
     }
 
-    private static class SourceCompatibilityTable {
-        public final Table<File, String, MissingDependencies> missingDependencies = HashBasedTable.create();
-        public final Set<String> allVersions = Sets.newTreeSet();
-    }
-
-    private static void createSourceEntries(List<Tag> output, SourceDependencies availableDependencies, List<DependencyResolveResult> results) {
-        final Set<File> allTargets = Sets.newHashSet();
-        final Map<String, SourceCompatibilityTable> compatibilityTable = Maps.newHashMap();
-
-        for (DependencyResolveResult result : results) {
-            final File target = result.jarFile;
-            allTargets.add(target);
-
-            for (Table.Cell<String, String, MissingDependencies> cell : result.missingDependencies.cellSet()) {
-                final String source = cell.getRowKey();
-                final String sourceVersion = cell.getColumnKey();
-                final MissingDependencies value = cell.getValue();
-
-                SourceCompatibilityTable tmp = compatibilityTable.get(source);
-
-                if (tmp == null) {
-                    tmp = new SourceCompatibilityTable();
-                    tmp.allVersions.addAll(Sets.newTreeSet(availableDependencies.getMod(source).allVersions()));
-                    compatibilityTable.put(source, tmp);
-                }
-
-                tmp.missingDependencies.put(target, sourceVersion, value);
-            }
-        }
-
-        for (Map.Entry<String, SourceCompatibilityTable> e : compatibilityTable.entrySet()) {
+    private static void createSourceEntries(List<Tag> output, SourceDependencies availableDependencies, CompatibilityData data) {
+        final List<File> allTargets = Lists.newArrayList(data.allTargets);
+        allTargets.sort(Comparator.comparing(File::getName));
+        for (Map.Entry<String, SourceModCompatibilityTable> e : data.modCompatibilityTable.entrySet()) {
             final String source = e.getKey();
+            final List<String> allVersions = Lists.newArrayList(availableDependencies.getMod(e.getKey()).allVersions());
+            allVersions.sort(Comparator.naturalOrder());
             output.add(h2(source));
             output.add(table()
                     .with(
@@ -111,97 +153,61 @@ public class ResultPrinter {
                                     tr()
                                             .with(th())
                                             .with(
-                                                    e.getValue().allVersions.stream().sorted().map(v -> th().withText(v)).collect(Collectors.toList())
+                                                    allVersions.stream().map(v -> th().withText(v)).collect(Collectors.toList())
                                             )
                                     )
                     )
                     .with(
                             tbody().with(
-                                    createCompatibilityTableRows(source, e.getValue())
+                                    createCompatibilityTableRows(source, allTargets, allVersions, e.getValue())
                                     )
                     )
                     );
         }
     }
 
-    private static List<Tag> createCompatibilityTableRows(String source, SourceCompatibilityTable value) {
-        return value.missingDependencies.rowMap().entrySet().stream().sorted(Map.Entry.comparingByKey()).map(e -> {
+    private static List<Tag> createCompatibilityTableRows(String source, List<File> allTargets, List<String> allVersions, SourceModCompatibilityTable table) {
+        return allTargets.stream().map(target -> {
             final ContainerTag rowTag = tr();
-            final String target = e.getKey().getName();
-            rowTag.with(td(target));
+            final String targetName = target.getName();
+            rowTag.with(td(targetName));
 
-            for (String version : value.allVersions) {
-                final MissingDependencies missingDeps = e.getValue().get(version);
-                rowTag.with(missingDeps == null
-                        ? td("\u2611").withClass("g")
-                        : td().withClass("r").with(a().withHref("#" + createAnchor(target, source, version)).withText("\u2612")));
+            for (String version : allVersions) {
+                rowTag.with(table.missingDependencies.contains(target, version)
+                        ? td().withClass("r").with(a().withHref("#" + createAnchor(targetName, source, version)).withText("\u2612"))
+                        : td("\u2611").withClass("g"));
             }
 
             return rowTag;
         }).collect(Collectors.toList());
     }
 
-    private static void createTargetEntries(List<Tag> output, SourceDependencies availableDependencies, List<DependencyResolveResult> requiredDependencies) {
-        for (DependencyResolveResult result : requiredDependencies) {
-            output.add(h2(result.jarFile.getName()));
-            output.add(ul().with(
-                    result.missingDependencies
-                            .rowMap()
-                            .entrySet()
-                            .stream()
-                            .map(e -> createModEntry(e.getKey(), availableDependencies, e.getValue()))
-                            .collect(Collectors.toList())
-                    )
-                    );
+    private static void createMissingDependenciesEntries(List<Tag> output, CompatibilityData data) {
+        data.modCompatibilityTable.forEach((source, compatiblityTable) -> {
+            compatiblityTable.missingDependencies.cellSet().forEach(e -> {
+                final String target = e.getRowKey().getName();
 
-        }
-    }
-
-    private static Tag createModEntry(String mod, SourceDependencies availableDependencies, Map<String, MissingDependencies> versions) {
-        Set<String> missing = versions.keySet();
-        Set<String> all = availableDependencies.getMod(mod).allVersions();
-        Set<String> compatible = Sets.difference(all, missing);
-        return li()
-                .withText(mod)
-                .with(
-                        ul().with(
-                                li().withText("Compatible: " + compatible.stream().sorted().collect(Collectors.joining(", "))),
-                                li().withText("Not compatible: " + missing.stream().sorted().collect(Collectors.joining(", ")))
-                                )
-                );
-    }
-
-    private static void createMissingDependenciesEntries(List<Tag> output, List<DependencyResolveResult> results) {
-        for (DependencyResolveResult dep : results) {
-            final String target = dep.jarFile.getName();
-            for (Cell<String, String, MissingDependencies> c : dep.missingDependencies.cellSet()) {
-                final String source = c.getRowKey();
-                final String version = c.getColumnKey();
+                final String version = e.getColumnKey();
 
                 final List<Tag> tags = Lists.newArrayList();
-                tags.add(h3(target + ":" + source + ":" + version));
-                addMissingElementEntry(tags, "Classes", c.getValue().missingClasses);
-                addMissingElementEntry(tags, "Fields", c.getValue().missingFields);
-                addMissingElementEntry(tags, "Methods", c.getValue().missingMethods);
+                {
+                    tags.add(h3(target + ":" + source + ":" + version));
+
+                    e.getValue().targetClass.forEach((targetCls, missingSourceElements) -> {
+                        tags.add(h4(targetCls));
+                        final List<String> missing = Lists.newArrayList();
+
+                        missing.addAll(missingSourceElements.missingClasses);
+                        missingSourceElements.missingElements.entries().forEach(el -> missing.add(el.getKey() + " " + el.getValue()));
+
+                        missing.sort(Comparator.naturalOrder());
+                        tags.add(pre().withText(Joiner.on('\n').join(missing)));
+                    });
+                }
 
                 output.add(div().withClass("missing").withId(createAnchor(target, source, version)).with(tags));
-            }
-        }
-    }
-
-    private static <T> void addMissingElementEntry(List<Tag> output, String name, Multimap<String, T> missingElements) {
-        if (missingElements.isEmpty())
-            return;
-
-        output.add(h4(name));
-
-        for (Map.Entry<String, Collection<T>> e : missingElements.asMap().entrySet()) {
-            output.add(h5(e.getKey()));
-            final ContainerTag p = pre();
-            output.add(p);
-            for (T missingElement : e.getValue())
-                p.withText(missingElement.toString() + "\n");
-        }
+            });
+        });
     }
 
 }

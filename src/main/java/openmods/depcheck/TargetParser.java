@@ -7,6 +7,8 @@ import java.util.Enumeration;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
+import openmods.depcheck.utils.ElementType;
+
 import org.objectweb.asm.ClassReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,9 +20,7 @@ public class TargetParser {
     public interface TargetClassVisitor {
         public void visitRequiredClass(String cls);
 
-        public void visitRequiredField(String cls, String name, String desc);
-
-        public void visitRequiredMethod(String cls, String name, String desc);
+        public void visitRequiredElement(String cls, ElementType type, String name, String desc);
     }
 
     public interface TargetModContentsVisitor {

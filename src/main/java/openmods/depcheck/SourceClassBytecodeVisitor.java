@@ -1,6 +1,7 @@
 package openmods.depcheck;
 
 import openmods.depcheck.ModInfo.ModRegistrationContext;
+import openmods.depcheck.utils.ElementType;
 
 import org.objectweb.asm.*;
 
@@ -31,13 +32,13 @@ public class SourceClassBytecodeVisitor extends ClassVisitor {
 
     @Override
     public FieldVisitor visitField(int access, String name, String desc, String signature, Object value) {
-        context.registerField(className, name, desc);
+        context.registerElement(className, ElementType.FIELD, name, desc);
         return null;
     }
 
     @Override
     public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
-        context.registerMethod(className, name, desc);
+        context.registerElement(className, ElementType.METHOD, name, desc);
         return null;
     }
 

@@ -5,11 +5,12 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
-import openmods.depcheck.DependencyResolveResult.MissingDependencies;
+import openmods.depcheck.DependencyResolveResult.MissingClassDependencies;
 import openmods.depcheck.TargetParser.TargetClassVisitor;
 import openmods.depcheck.TargetParser.TargetModContentsVisitor;
 import openmods.depcheck.TargetParser.TargetModVisitor;
-import openmods.depcheck.utils.ClassElement;
+import openmods.depcheck.utils.ElementType;
+import openmods.depcheck.utils.TypedElement;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,14 +22,13 @@ public class DependencyCollector implements TargetModVisitor {
 
     private static final Logger logger = LoggerFactory.getLogger(DependencyCollector.class);
 
-    private class ClassDependencyVisitor implements TargetClassVisitor {
-        private final DependencyResolveResult result;
+    private static class ClassDependencyVisitor implements TargetClassVisitor {
+        private final MissingClassDependencies missingDependencies;
+        private final SourceDependencies availableDependencies;
 
-        private final String targetClsName;
-
-        public ClassDependencyVisitor(DependencyResolveResult result, String targetClsName) {
-            this.result = result;
-            this.targetClsName = targetClsName;
+        public ClassDependencyVisitor(SourceDependencies availableDependencies, MissingClassDependencies missingDependencies) {
+            this.availableDependencies = availableDependencies;
+            this.missingDependencies = missingDependencies;
         }
 
         @Override
@@ -38,53 +38,30 @@ public class DependencyCollector implements TargetModVisitor {
                 final ModInfo mod = maybeMod.get();
                 logger.trace("Adding class dependency {} from {}", requiredClsName, mod.modId);
 
-                final Set<String> matchingVersions = mod.matchClass(requiredClsName);
+                final Set<String> matchingVersions = mod.findMatchingVersions(requiredClsName);
                 final Set<String> missingVersions = Sets.difference(mod.allVersions(), matchingVersions);
 
-                for (String version : missingVersions) {
-                    final MissingDependencies missingDeps = result.getOrCreate(mod.modId, version);
-                    missingDeps.missingClasses.put(targetClsName, requiredClsName);
-                }
+                if (!missingVersions.isEmpty())
+                    missingDependencies.getOrCreate(mod.modId).addMissingClass(requiredClsName, missingVersions);
             } else {
                 logger.trace("Class dependency {} does not belong to any known mod, discarding", requiredClsName);
             }
         }
 
         @Override
-        public void visitRequiredField(String requiredCls, String fieldName, String fieldDesc) {
+        public void visitRequiredElement(String requiredCls, ElementType type, String fieldName, String fieldDesc) {
             final Optional<ModInfo> maybeMod = availableDependencies.identifyMod(requiredCls);
             if (maybeMod.isPresent()) {
                 final ModInfo mod = maybeMod.get();
-                logger.trace("Adding field dependency {} {} from {}", fieldName, fieldDesc, mod.modId);
+                logger.trace("Adding {} dependency to {} {} from {}", type, fieldName, fieldDesc, mod.modId);
 
-                final Set<String> matchingVersions = mod.matchField(requiredCls, fieldName, fieldDesc);
+                final Set<String> matchingVersions = mod.findMatchingVersions(requiredCls, type, fieldName, fieldDesc);
                 final Set<String> missingVersions = Sets.difference(mod.allVersions(), matchingVersions);
 
-                for (String version : missingVersions) {
-                    final MissingDependencies missingDeps = result.getOrCreate(mod.modId, version);
-                    missingDeps.missingFields.put(targetClsName, new ClassElement(requiredCls, fieldName, fieldDesc));
-                }
+                if (!missingVersions.isEmpty())
+                    missingDependencies.getOrCreate(mod.modId).addMissingElement(requiredCls, new TypedElement(type, fieldName, fieldDesc), missingVersions);
             } else {
-                logger.trace("Field dependency {} {} does not belong to any known mod, discarding", fieldName, fieldDesc);
-            }
-        }
-
-        @Override
-        public void visitRequiredMethod(String requiredCls, String methodName, String methodDesc) {
-            final Optional<ModInfo> maybeMod = availableDependencies.identifyMod(requiredCls);
-            if (maybeMod.isPresent()) {
-                final ModInfo mod = maybeMod.get();
-                logger.trace("Adding method dependency {} {} from {}", methodName, methodDesc, mod.modId);
-
-                final Set<String> matchingVersions = mod.matchMethod(requiredCls, methodName, methodDesc);
-                final Set<String> missingVersions = Sets.difference(mod.allVersions(), matchingVersions);
-
-                for (String version : missingVersions) {
-                    final MissingDependencies missingDeps = result.getOrCreate(mod.modId, version);
-                    missingDeps.missingMethods.put(targetClsName, new ClassElement(requiredCls, methodName, methodDesc));
-                }
-            } else {
-                logger.trace("Method dependency {} {} does not belong to any known mod, discarding", methodName, methodDesc);
+                logger.trace("{} dependency {} {} does not belong to any known mod, discarding", type, fieldName, fieldDesc);
             }
         }
 
@@ -106,9 +83,9 @@ public class DependencyCollector implements TargetModVisitor {
 
         return new TargetModContentsVisitor() {
             @Override
-            public TargetClassVisitor visitClass(String cls) {
-                logger.trace("Visiting mod class {}", cls);
-                return new ClassDependencyVisitor(result, cls);
+            public TargetClassVisitor visitClass(String targetClass) {
+                logger.trace("Visiting mod class {}", targetClass);
+                return new ClassDependencyVisitor(availableDependencies, result.getOrCreate(targetClass));
             }
         };
     }

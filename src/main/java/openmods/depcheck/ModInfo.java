@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
 
+import openmods.depcheck.utils.ElementType;
 import openmods.depcheck.utils.TypedElement;
 
 import com.google.common.base.Preconditions;
@@ -24,13 +25,7 @@ public class ModInfo implements Serializable {
         }
 
         private ClassVersions getOrCreateClass(String clsName) {
-            ClassVersions cls = classes.get(clsName);
-
-            if (cls == null) {
-                cls = new ClassVersions();
-                classes.put(clsName, cls);
-            }
-            return cls;
+            return classes.computeIfAbsent(clsName, k -> new ClassVersions());
         }
 
         public void registerClass(String clsName, String superClass, Set<String> interfaces) {
@@ -38,16 +33,10 @@ public class ModInfo implements Serializable {
             cls.createForVersion(modVersion, superClass, interfaces);
         }
 
-        public void registerMethod(String clsName, String name, String desc) {
+        public void registerElement(String clsName, ElementType type, String name, String desc) {
             final ClassVersions cls = getOrCreateClass(clsName);
             final ClassVersion cv = cls.getForVersion(modVersion);
-            cv.methods.add(new TypedElement(name, desc));
-        }
-
-        public void registerField(String clsName, String name, String desc) {
-            final ClassVersions cls = getOrCreateClass(clsName);
-            final ClassVersion cv = cls.getForVersion(modVersion);
-            cv.fields.add(new TypedElement(name, desc));
+            cv.elements.add(new TypedElement(type, name, desc));
         }
     }
 
@@ -55,11 +44,9 @@ public class ModInfo implements Serializable {
         private static final long serialVersionUID = 3023800591787115776L;
 
         public final String superClass;
-
         public final Set<String> interfaces;
 
-        private final Set<TypedElement> methods = Sets.newHashSet();
-        private final Set<TypedElement> fields = Sets.newHashSet();
+        private final Set<TypedElement> elements = Sets.newHashSet();
 
         public ClassVersion(String superClass, Set<String> interfaces) {
             this.superClass = superClass;
@@ -118,11 +105,6 @@ public class ModInfo implements Serializable {
         return pkg.startsWith(pkgPrefix);
     }
 
-    public Set<String> matchClass(String cls) {
-        final ClassVersions classVersions = classes.get(cls);
-        return classVersions != null ? classVersions.versions.keySet() : Sets.newHashSet();
-    }
-
     private boolean isElementInVersion(String cls, Predicate<ClassVersion> predicate, String version) {
         if (cls.equals("java.lang.Object"))
             return false;
@@ -164,14 +146,13 @@ public class ModInfo implements Serializable {
         return result;
     }
 
-    public Set<String> matchMethod(String cls, String name, String desc) {
-        final TypedElement e = new TypedElement(name, desc);
-        return selectClassVersions(cls, version -> isElementInVersion(cls, cv -> cv.methods.contains(e), version));
+    public Set<String> findMatchingVersions(String cls) {
+        final ClassVersions classVersions = classes.get(cls);
+        return classVersions != null ? classVersions.versions.keySet() : Sets.newHashSet();
     }
 
-    public Set<String> matchField(String cls, String name, String desc) {
-        final TypedElement e = new TypedElement(name, desc);
-        return selectClassVersions(cls, version -> isElementInVersion(cls, cv -> cv.fields.contains(e), version));
+    public Set<String> findMatchingVersions(String cls, ElementType type, String name, String desc) {
+        final TypedElement e = new TypedElement(type, name, desc);
+        return selectClassVersions(cls, version -> isElementInVersion(cls, cv -> cv.elements.contains(e), version));
     }
-
 }
