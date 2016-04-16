@@ -18,6 +18,10 @@ public class TypedElement implements Serializable {
         this.desc = desc;
     }
 
+    public boolean isInClass(Class<?> cls) {
+        return type.isInClass(cls, name, desc);
+    }
+
     @Override
     public boolean equals(final Object o) {
         if (o instanceof TypedElement) {

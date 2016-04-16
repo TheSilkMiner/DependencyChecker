@@ -3,9 +3,10 @@ package openmods.depcheck;
 import java.io.Serializable;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 import openmods.depcheck.utils.ElementType;
+import openmods.depcheck.utils.LibClassChecker;
 import openmods.depcheck.utils.TypedElement;
 
 import com.google.common.base.Preconditions;
@@ -105,9 +106,14 @@ public class ModInfo implements Serializable {
         return pkg.startsWith(pkgPrefix);
     }
 
-    private boolean isElementInVersion(String cls, Predicate<ClassVersion> predicate, String version) {
-        if (cls.equals("java.lang.Object"))
-            return false;
+    public Set<String> findMatchingVersions(String cls) {
+        final ClassVersions classVersions = classes.get(cls);
+        return classVersions != null ? classVersions.versions.keySet() : Sets.newHashSet();
+    }
+
+    private boolean isElementInVersion(String cls, TypedElement element, String version) {
+        if (cls.startsWith("java."))
+            return LibClassChecker.isElementInClass(cls, element);
 
         final ClassVersions classVersions = classes.get(cls);
         if (classVersions == null)
@@ -117,42 +123,30 @@ public class ModInfo implements Serializable {
         if (classVersion == null)
             return false;
 
-        if (predicate.test(classVersion))
+        if (classVersion.elements.contains(element))
             return true;
 
-        if (isElementInVersion(classVersion.superClass, predicate, version))
+        if (isElementInVersion(classVersion.superClass, element, version))
             return true;
 
         for (String intf : classVersion.interfaces)
-            if (isElementInVersion(intf, predicate, version))
+            if (isElementInVersion(intf, element, version))
                 return true;
 
         return false;
     }
 
-    private Set<String> selectClassVersions(String cls, Predicate<String> predicate) {
+    private Set<String> selectClassVersions(String cls, TypedElement element) {
         final ClassVersions classVersions = classes.get(cls);
         if (classVersions == null)
             return Sets.newHashSet();
 
-        Set<String> result = Sets.newHashSet();
-        for (Map.Entry<String, ClassVersion> e : classVersions.versions.entrySet()) {
-            final String version = e.getKey();
-
-            if (predicate.test(version))
-                result.add(version);
-        }
-
-        return result;
-    }
-
-    public Set<String> findMatchingVersions(String cls) {
-        final ClassVersions classVersions = classes.get(cls);
-        return classVersions != null ? classVersions.versions.keySet() : Sets.newHashSet();
+        return classVersions.versions.keySet().stream()
+                .filter(version -> isElementInVersion(cls, element, version))
+                .collect(Collectors.toSet());
     }
 
     public Set<String> findMatchingVersions(String cls, ElementType type, String name, String desc) {
-        final TypedElement e = new TypedElement(type, name, desc);
-        return selectClassVersions(cls, version -> isElementInVersion(cls, cv -> cv.elements.contains(e), version));
+        return selectClassVersions(cls, new TypedElement(type, name, desc));
     }
 }
