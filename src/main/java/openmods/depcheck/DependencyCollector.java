@@ -87,6 +87,11 @@ public class DependencyCollector implements TargetModVisitor {
                 logger.trace("Visiting mod class {}", targetClass);
                 return new ClassDependencyVisitor(availableDependencies, result.getOrCreate(targetClass));
             }
+
+            @Override
+            public Optional<TargetClassVisitor> visitClassIfExists(String cls) {
+                return result.get(cls).map(deps -> new ClassDependencyVisitor(availableDependencies, deps));
+            }
         };
     }
 

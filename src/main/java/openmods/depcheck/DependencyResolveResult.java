@@ -1,9 +1,7 @@
 package openmods.depcheck;
 
 import java.io.File;
-import java.util.Collection;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import openmods.depcheck.utils.TypedElement;
 
@@ -55,6 +53,10 @@ public class DependencyResolveResult {
 
     public MissingClassDependencies getOrCreate(String targetClass) {
         return missingTargetClassDependencies.computeIfAbsent(targetClass, k -> new MissingClassDependencies());
+    }
+
+    public Optional<MissingClassDependencies> get(String targetClass) {
+        return Optional.ofNullable(missingTargetClassDependencies.get(targetClass));
     }
 
     public void visit(MissingDependencySink sink) {
