@@ -1,9 +1,9 @@
 package openmods.depcheck;
 
 import java.io.Serializable;
-import java.util.Collection;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 import com.google.common.collect.Maps;
 
@@ -29,8 +29,8 @@ public class SourceDependencies implements Serializable {
         return mods.get(modId);
     }
 
-    public Collection<ModInfo> getAllMods() {
-        return mods.values();
+    public Set<String> getAllModIds() {
+        return mods.keySet();
     }
 
     public boolean isUpdated() {

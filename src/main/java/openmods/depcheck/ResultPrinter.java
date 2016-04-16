@@ -150,9 +150,10 @@ public class ResultPrinter {
     private static void createSourceEntries(List<Tag> output, SourceDependencies availableDependencies, CompatibilityData data) {
         final List<File> allTargets = Lists.newArrayList(data.allTargets);
         allTargets.sort(Comparator.comparing(File::getName));
-        for (Map.Entry<String, SourceModCompatibilityTable> e : data.modCompatibilityTable.entrySet()) {
-            final String source = e.getKey();
-            final List<ArtifactVersion> allVersions = availableDependencies.getMod(e.getKey()).allVersions().stream().map(DefaultArtifactVersion::new).sorted().collect(Collectors.toList());
+        availableDependencies.getAllModIds().stream().sorted().forEach(source -> {
+            final SourceModCompatibilityTable compatibilityTable = data.get(source);
+
+            final List<ArtifactVersion> allVersions = availableDependencies.getMod(source).allVersions().stream().map(DefaultArtifactVersion::new).sorted().collect(Collectors.toList());
             output.add(h2(source));
             output.add(table()
                     .with(
@@ -166,11 +167,11 @@ public class ResultPrinter {
                     )
                     .with(
                             tbody().with(
-                                    createCompatibilityTableRows(source, allTargets, allVersions, e.getValue())
+                                    createCompatibilityTableRows(source, allTargets, allVersions, compatibilityTable)
                                     )
                     )
                     );
-        }
+        });
     }
 
     private static List<Tag> createCompatibilityTableRows(String source, List<File> allTargets, List<ArtifactVersion> allVersions,
