@@ -24,6 +24,7 @@ dependencies {
     compile 'org.slf4j:slf4j-jdk14:1.7.20'
     compile 'com.j2html:j2html:0.7'
     compile 'de.ruedigermoeller:fst:1.63'
+    compile 'org.apache.maven:maven-artifact:3.3.9'
 }
 
 jar {

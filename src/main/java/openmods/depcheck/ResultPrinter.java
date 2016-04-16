@@ -11,6 +11,9 @@ import java.util.stream.Collectors;
 import openmods.depcheck.DependencyResolveResult.MissingDependencySink;
 import openmods.depcheck.utils.TypedElement;
 
+import org.apache.maven.artifact.versioning.ArtifactVersion;
+import org.apache.maven.artifact.versioning.DefaultArtifactVersion;
+
 import com.google.common.base.Charsets;
 import com.google.common.base.Joiner;
 import com.google.common.base.Throwables;
@@ -54,9 +57,9 @@ public class ResultPrinter {
 
     private static class SourceModCompatibilityTable {
         // (target, version) -> missing stuff
-        public final Table<File, String, MissingTargetDependencies> missingDependencies = HashBasedTable.create();
+        public final Table<File, ArtifactVersion, MissingTargetDependencies> missingDependencies = HashBasedTable.create();
 
-        public MissingTargetDependencies getOrCreate(File target, String sourceVersion) {
+        public MissingTargetDependencies getOrCreate(File target, ArtifactVersion sourceVersion) {
             MissingTargetDependencies result = missingDependencies.get(target, sourceVersion);
             if (result == null) {
                 result = new MissingTargetDependencies();
@@ -80,15 +83,20 @@ public class ResultPrinter {
                 @Override
                 public void acceptMissingClass(String targetCls, String sourceMod, String sourceCls, Set<String> versions) {
                     final SourceModCompatibilityTable modDeps = get(sourceMod);
-                    for (String version : versions)
-                        modDeps.getOrCreate(target, version).get(targetCls).missingClasses.add(sourceCls);
+
+                    for (String version : versions) {
+                        final ArtifactVersion v = new DefaultArtifactVersion(version);
+                        modDeps.getOrCreate(target, v).get(targetCls).missingClasses.add(sourceCls);
+                    }
                 }
 
                 @Override
                 public void acceptMissingElement(String targetCls, String sourceMod, String sourceCls, TypedElement sourceElement, Set<String> versions) {
                     final SourceModCompatibilityTable modDeps = get(sourceMod);
-                    for (String version : versions)
-                        modDeps.getOrCreate(target, version).get(targetCls).missingElements.put(sourceCls, sourceElement);
+                    for (String version : versions) {
+                        final ArtifactVersion v = new DefaultArtifactVersion(version);
+                        modDeps.getOrCreate(target, v).get(targetCls).missingElements.put(sourceCls, sourceElement);
+                    }
                 }
             };
         }
@@ -105,7 +113,7 @@ public class ResultPrinter {
         return result;
     }
 
-    private static String createAnchor(String target, String source, String version) {
+    private static String createAnchor(String target, String source, ArtifactVersion version) {
         return target + "__" + source + "__" + version;
     }
 
@@ -144,8 +152,7 @@ public class ResultPrinter {
         allTargets.sort(Comparator.comparing(File::getName));
         for (Map.Entry<String, SourceModCompatibilityTable> e : data.modCompatibilityTable.entrySet()) {
             final String source = e.getKey();
-            final List<String> allVersions = Lists.newArrayList(availableDependencies.getMod(e.getKey()).allVersions());
-            allVersions.sort(Comparator.naturalOrder());
+            final List<ArtifactVersion> allVersions = availableDependencies.getMod(e.getKey()).allVersions().stream().map(DefaultArtifactVersion::new).sorted().collect(Collectors.toList());
             output.add(h2(source));
             output.add(table()
                     .with(
@@ -153,7 +160,7 @@ public class ResultPrinter {
                                     tr()
                                             .with(th())
                                             .with(
-                                                    allVersions.stream().map(v -> th().withText(v)).collect(Collectors.toList())
+                                                    allVersions.stream().map(v -> th().withText(v.toString())).collect(Collectors.toList())
                                             )
                                     )
                     )
@@ -166,13 +173,14 @@ public class ResultPrinter {
         }
     }
 
-    private static List<Tag> createCompatibilityTableRows(String source, List<File> allTargets, List<String> allVersions, SourceModCompatibilityTable table) {
+    private static List<Tag> createCompatibilityTableRows(String source, List<File> allTargets, List<ArtifactVersion> allVersions,
+            SourceModCompatibilityTable table) {
         return allTargets.stream().map(target -> {
             final ContainerTag rowTag = tr();
             final String targetName = target.getName();
             rowTag.with(td(targetName));
 
-            for (String version : allVersions) {
+            for (ArtifactVersion version : allVersions) {
                 rowTag.with(table.missingDependencies.contains(target, version)
                         ? td().withClass("r").with(a().withHref("#" + createAnchor(targetName, source, version)).withText("\u2612"))
                         : td("\u2611").withClass("g"));
@@ -187,7 +195,7 @@ public class ResultPrinter {
             compatiblityTable.missingDependencies.cellSet().forEach(e -> {
                 final String target = e.getRowKey().getName();
 
-                final String version = e.getColumnKey();
+                final ArtifactVersion version = e.getColumnKey();
 
                 final List<Tag> tags = Lists.newArrayList();
                 {
