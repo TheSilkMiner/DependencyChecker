@@ -79,41 +79,41 @@ public class TargetParser {
 
             fileVisitor.visitClassIfExists(caller).ifPresent(visitor -> {
                 switch (type) {
-                    case "C": {
+                    case "C":
                         if (fields.length == 3) {
                             // TYPE CALLER CALLEE
                             visitor.visitRequiredClass(fields[2]);
                         } else {
                             logger.warn("Malformed class entry: {}", line);
                         }
-                    }
-                    case "F": {
+                        break;
+                    case "F":
                         if (fields.length == 5) {
                             // TYPE CALLER CALLEE NAME DESC
                             visitor.visitRequiredElement(fields[2], ElementType.FIELD, fields[3], fields[4]);
                         } else {
                             logger.warn("Malformed field entry: {}", line);
                         }
-                    }
-                    case "M": {
+                        break;
+                    case "M":
                         if (fields.length == 5) {
                             // TYPE CALLER CALLEE NAME DESC
                             visitor.visitRequiredElement(fields[2], ElementType.METHOD, fields[3], fields[4]);
                         } else {
                             logger.warn("Malformed method entry: {}", line);
                         }
-                    }
-                    case "I": {
+                        break;
+                    case "I":
                         if (fields.length == 4) {
                             // TYPE CALLER CALLEE DESC
                             visitor.visitRequiredElement(fields[2], ElementType.METHOD, "<init>", fields[3]);
                         } else {
                             logger.warn("Malformed constructor entry: {}", line);
                         }
-                    }
-                    default: {
+                        break;
+                    default:
                         logger.warn("Malformed line: {}", line);
-                    }
+                        break;
                 }
             });
         }

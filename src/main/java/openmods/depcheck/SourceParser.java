@@ -163,6 +163,9 @@ public class SourceParser {
                     }
                 }
             }
+
+            if (modVersion.isEmpty())
+                logger.warn("No matching packages found in {}", jarFile);
         }
 
     }

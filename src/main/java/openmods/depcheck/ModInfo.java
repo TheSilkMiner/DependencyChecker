@@ -20,6 +20,7 @@ public class ModInfo implements Serializable {
 
     public class ModRegistrationContext {
         private final String modVersion;
+        private boolean notEmpty;
 
         private ModRegistrationContext(String modVersion) {
             this.modVersion = modVersion;
@@ -32,12 +33,18 @@ public class ModInfo implements Serializable {
         public void registerClass(String clsName, String superClass, Set<String> interfaces) {
             final ClassVersions cls = getOrCreateClass(clsName);
             cls.createForVersion(modVersion, superClass, interfaces);
+            notEmpty = true;
         }
 
         public void registerElement(String clsName, ElementType type, String name, String desc) {
             final ClassVersions cls = getOrCreateClass(clsName);
             final ClassVersion cv = cls.getForVersion(modVersion);
             cv.elements.add(new TypedElement(type, name, desc));
+            notEmpty = true;
+        }
+
+        public boolean isEmpty() {
+            return !notEmpty;
         }
     }
 
