@@ -2,6 +2,8 @@ plugins {
     id 'java'
     id 'eclipse'
     id 'application'
+	
+	id 'idea' // TheSilkMiner addition: Allow Idea users to set up the repository correctly
 }
 
 sourceCompatibility = 1.8
