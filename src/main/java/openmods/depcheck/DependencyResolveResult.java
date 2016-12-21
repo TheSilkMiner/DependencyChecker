@@ -10,9 +10,9 @@ import com.google.common.collect.*;
 public class DependencyResolveResult {
 
     public interface MissingDependencySink {
-        public void acceptMissingClass(String targetCls, String sourceMod, String sourceCls, Set<String> versions);
+        void acceptMissingClass(String targetCls, String sourceMod, String sourceCls, Set<String> versions);
 
-        public void acceptMissingElement(String targetCls, String sourceMod, String sourceCls, TypedElement sourceElement, Set<String> versions);
+        void acceptMissingElement(String targetCls, String sourceMod, String sourceCls, TypedElement sourceElement, Set<String> versions);
     }
 
     private static class MissingSourceClass {
@@ -59,6 +59,7 @@ public class DependencyResolveResult {
         return Optional.ofNullable(missingTargetClassDependencies.get(targetClass));
     }
 
+    @SuppressWarnings("CodeBlock2Expr")
     public void visit(MissingDependencySink sink) {
         missingTargetClassDependencies.forEach((targetCls, missingTargetDeps) -> {
             missingTargetDeps.modToMissingDependencies.forEach((sourceMod, missingSourceDeps) -> {

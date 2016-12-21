@@ -18,19 +18,20 @@ public class TargetParser {
     private static final Logger logger = LoggerFactory.getLogger(TargetParser.class);
 
     public interface TargetClassVisitor {
-        public void visitRequiredClass(String cls);
+        void visitRequiredClass(String cls);
 
-        public void visitRequiredElement(String cls, ElementType type, String name, String desc);
+        void visitRequiredElement(String cls, ElementType type, String name, String desc);
     }
 
     public interface TargetModContentsVisitor {
-        public TargetClassVisitor visitClass(String cls);
+        TargetClassVisitor visitClass(String cls);
 
-        public Optional<TargetClassVisitor> visitClassIfExists(String cls);
+        Optional<TargetClassVisitor> visitClassIfExists(String cls);
     }
 
+    @FunctionalInterface
     public interface TargetModVisitor {
-        public TargetModContentsVisitor visitFile(File file);
+        TargetModContentsVisitor visitFile(File file);
     }
 
     private final File targetsDir;

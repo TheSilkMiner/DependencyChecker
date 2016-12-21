@@ -191,6 +191,7 @@ public class ResultPrinter {
         }).collect(Collectors.toList());
     }
 
+    @SuppressWarnings("CodeBlock2Expr")
     private static void createMissingDependenciesEntries(List<Tag> output, CompatibilityData data) {
         data.modCompatibilityTable.forEach((source, compatiblityTable) -> {
             compatiblityTable.missingDependencies.cellSet().forEach(e -> {

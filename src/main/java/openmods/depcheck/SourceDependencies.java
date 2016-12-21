@@ -2,6 +2,7 @@ package openmods.depcheck;
 
 import java.io.Serializable;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
@@ -14,7 +15,7 @@ public class SourceDependencies implements Serializable {
 
     public ModInfo addMod(String pkgPrefix, String modId) {
         ModInfo result = mods.get(modId);
-        if (result == null || !result.pkgPrefix.equals(pkgPrefix)) {
+        if (result == null || !Objects.equals(result.pkgPrefix, pkgPrefix)) {
             result = new ModInfo(pkgPrefix, modId);
             mods.put(modId, result);
         }

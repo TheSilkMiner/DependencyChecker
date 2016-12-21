@@ -1,6 +1,7 @@
 package openmods.depcheck.utils;
 
 import java.io.Serializable;
+import java.util.Objects;
 
 public class TypedElement implements Serializable {
 
@@ -26,7 +27,7 @@ public class TypedElement implements Serializable {
     public boolean equals(final Object o) {
         if (o instanceof TypedElement) {
             TypedElement other = (TypedElement)o;
-            return this.type.equals(other.type)
+            return Objects.equals(this.type, other.type)
                     && this.name.equals(other.name)
                     && this.desc.equals(other.desc);
         }

@@ -2,6 +2,7 @@ package openmods.depcheck.utils;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.Objects;
 
 import org.objectweb.asm.Type;
 
@@ -12,7 +13,7 @@ public enum ElementType {
             try {
                 final Field f = cls.getDeclaredField(name);
                 final String actualDesc = Type.getDescriptor(f.getType());
-                return desc.equals(actualDesc);
+                return Objects.equals(desc, actualDesc);
             } catch (NoSuchFieldException e) {
                 return false;
             }
@@ -22,8 +23,8 @@ public enum ElementType {
         @Override
         public boolean isInClass(Class<?> cls, String name, String desc) {
             for (Method m : cls.getDeclaredMethods())
-                if (m.getName().equals(name) &&
-                        Type.getMethodDescriptor(m).equals(desc))
+                if (Objects.equals(m.getName(), name) &&
+                        Objects.equals(Type.getMethodDescriptor(m), desc))
                     return true;
 
             return false;

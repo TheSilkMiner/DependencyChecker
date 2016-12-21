@@ -71,27 +71,27 @@ dependencies {
 }
 
 ext.mainClassManifest = manifest {
-	attributes (
+    attributes (
 		'Main-Class': mainClassName
 	)
 }
 
 ext.fatJarManifest = manifest {
-	attributes (
+    attributes (
 		'JarType': 'production',
 		'IsFatJar': 'true'
 	)
 }
 
 ext.normalJarManifest = manifest {
-	attributes (
+    attributes (
 		'JarType': 'production',
 		'IsFatJar': 'false'
 	)
 }
 
 ext.sourcesJarManifest = manifest {
-	attributes (
+    attributes (
 		'JarType': 'developing',
 		'IsFatJar': 'false'
 	)
@@ -105,7 +105,7 @@ jar {
 
 shadowJar {
     configurations = [ project.configurations.shade ]
-	manifest {
+    manifest {
 		from mainClassManifest, fatJarManifest
 	}
 }
