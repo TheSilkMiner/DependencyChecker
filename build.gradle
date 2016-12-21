@@ -1,9 +1,21 @@
+buildscript {
+    repositories {
+        mavenCentral()
+        jcenter()
+    }
+    dependencies {
+        classpath 'com.github.jengelman.gradle.plugins:shadow:1.2.3'
+    }
+}
+
 plugins {
     id 'java'
     id 'eclipse'
     id 'application'
 	
 	id 'idea' // TheSilkMiner addition: Allow Idea users to set up the repository correctly
+	
+	id 'com.github.johnrengelman.shadow' version '1.2.4'
 }
 
 sourceCompatibility = 1.8
@@ -19,20 +31,97 @@ repositories {
     jcenter()
 }
 
+configurations {
+	shade
+	compile.extendsFrom shade
+}
+
 dependencies {
+    // ASM
     compile 'org.ow2.asm:asm-debug-all:5.1'
-    compile 'com.google.guava:guava:19.0' 
+	shade group: 'org.ow2.asm', name: 'asm-debug-all', version: '5.1'
+	
+	// Guava
+    compile 'com.google.guava:guava:19.0'
+	shade group: 'com.google.guava', name: 'guava', version: '19.0'
+	
+	// Gson
     compile 'com.google.code.gson:gson:2.2.4'
+	shade group: 'com.google.code.gson', name: 'gson', version: '2.2.4'
+	
+	// Simple Logging Facade For Java
     compile 'org.slf4j:slf4j-jdk14:1.7.20'
+	shade group: 'org.slf4j', name: 'slf4j-jdk14', version: '1.7.20'
+	
+	// j2html
     compile 'com.j2html:j2html:0.7'
+	shade group: 'com.j2html', name: 'j2html', version: '0.7'
+	
+	// Fast serialization
     compile 'de.ruedigermoeller:fst:1.63'
+	shade group: 'de.ruedigermoeller', name: 'fst', version: '1.63'
+	
+	// Maven artifact
     compile 'org.apache.maven:maven-artifact:3.3.9'
+	shade group: 'org.apache.maven', name: 'maven-artifact', version: '3.3.9'
+	
+	// Jetbrains Annotations
+	compile group: 'org.jetbrains', name: 'annotations', version: '15.0'
+	shade group: 'org.jetbrains', name: 'annotations', version: '15.0'
+}
+
+ext.mainClassManifest = manifest {
+	attributes (
+		'Main-Class': mainClassName
+	)
+}
+
+ext.fatJarManifest = manifest {
+	attributes (
+		'JarType': 'production',
+		'IsFatJar': 'true'
+	)
+}
+
+ext.normalJarManifest = manifest {
+	attributes (
+		'JarType': 'production',
+		'IsFatJar': 'false'
+	)
+}
+
+ext.sourcesJarManifest = manifest {
+	attributes (
+		'JarType': 'developing',
+		'IsFatJar': 'false'
+	)
 }
 
 jar {
     manifest {
-        attributes 'Main-Class': mainClassName
+        from mainClassManifest, normalJarManifest
     }
+}
+
+shadowJar {
+    configurations = [ project.configurations.shade ]
+	manifest {
+		from mainClassManifest, fatJarManifest
+	}
+}
+
+build.dependsOn shadowJar
+
+task sourcesJar(type: Jar, dependsOn: classes) {
+    classifier = 'sources'
+    from sourceSets.main.allSource
+	manifest {
+		from mainClassManifest, sourcesJarManifest
+	}
+}
+
+artifacts {
+    archives sourcesJar
 }
 
 task wrapper (type: Wrapper) {

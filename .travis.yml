@@ -1,0 +1,40 @@
+language: java
+jdk:
+  - oraclejdk8
+  - openjdk8
+sudo: required
+dist: trusty
+before_install:
+  - echo Setting up workspace...
+  - echo Before install...
+  - chmod +x gradlew
+  - ls -a -l -h --color
+  - echo Downloading Gradle
+  - ./gradlew
+  - ./gradlew -version
+install:
+  - echo Install...
+  - ./gradlew assemble
+before_script:
+  - echo Starting building process...
+  - echo Before script...
+  - echo Printing dependencies...
+  - ./gradlew dependencies
+script:
+  - echo Script...
+  - ./gradlew check --info
+after_success:
+  - echo Build successful
+  - echo Now building the artifacts
+  - ./gradlew build --info
+  - echo Deploying artifact
+  - echo == Insert here artifact deploy ==
+after_failure:
+  - echo Build failed
+  - echo See the log for errors
+  - echo Deploying build log...
+  - echo == Insert here log deploy ==
+after_script:
+  - echo After script...
+  - echo == Insert cleanup if needed ==
+  - echo Build terminated.
