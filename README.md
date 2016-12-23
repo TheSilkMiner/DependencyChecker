@@ -1,7 +1,8 @@
 # DependencyChecker
+**Status for developing branch (`master`):** [![Build Status (Travis)](https://travis-ci.org/TheSilkMiner/DependencyChecker.svg?branch=master)](https://travis-ci.org/TheSilkMiner/DependencyChecker)
 
-This is small utility for checking compatiblity between mods, based on static analysis.
-Created for OpenPeripheralIntegration, but maybe somebody will find alternative use.
+This is small utility for checking compatibility between mods, based on static analysis.
+Created for OpenPeripheralIntegration, but maybe somebody will find an alternative use.
 
 Program accepts directories with following structure:
 ```
