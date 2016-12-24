@@ -58,7 +58,6 @@ public class DependencyChecker {
 	 * If --directories is specified, every other value must be ignored.
 	 * See draft for more information
 	 */
-	// TODO directories
 	// TODO printer
 	// TODO output
 	// TODO no-cache
