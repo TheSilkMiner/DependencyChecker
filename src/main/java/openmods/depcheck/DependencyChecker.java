@@ -6,6 +6,7 @@ import com.google.common.collect.Maps;
 import org.jetbrains.annotations.Contract;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.impl.StaticLoggerBinder;
 
 import java.io.File;
 import java.lang.reflect.Field;
@@ -43,10 +44,6 @@ public class DependencyChecker {
 		}
 	}
 
-	private static final String DIRECTORIES_ARGUMENT = "directories";
-
-    private static final Logger logger = LoggerFactory.getLogger(DependencyChecker.class);
-
 	/*
 	 * Parameters:
 	 * --directories [varargs]: specifies a list of directories where the program should search mods
@@ -67,15 +64,18 @@ public class DependencyChecker {
 	// TODO no-cache
 	// TODO disable-matcher-fail
 	// TODO printer-settings
-	// TODO disable-varied-logging
     public static void main(final String... args) {
     	new Thread(() -> new DependencyChecker().run(args)).start();
     }
 
     private void run(@Nonnull final String... args) {
-	    final Parameters arguments = this.parseArguments(args);
+    	final Parameters arguments = this.parseArguments(args);
 
 	    if (arguments.directories.isEmpty()) arguments.directories.add("data");
+
+	    if (arguments.disableVariedLogging) StaticLoggerBinder.disableVariedLogging();
+
+	    final Logger logger = LoggerFactory.getLogger(DependencyChecker.class);
 
 	    for (final String dir : arguments.directories) {
 		    final File topDir = new File(dir);
@@ -163,7 +163,7 @@ public class DependencyChecker {
     @Contract(pure = true)
     private boolean isVarargArgument(@Nonnull final String arg) {
     	final String realArg = arg.substring("--".length());
-    	return Objects.equals(realArg, DIRECTORIES_ARGUMENT);
+    	return Objects.equals(realArg, "directories");
     }
 
     @Contract("_, _, _ -> fail")
