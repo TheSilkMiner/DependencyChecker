@@ -13,6 +13,8 @@ import openmods.depcheck.dependencies.DependencyResolveResult;
 import openmods.depcheck.parser.SourceDependencies;
 import openmods.depcheck.parser.SourceParser;
 import openmods.depcheck.parser.TargetParser;
+import openmods.depcheck.printer.IConfigurablePrinter;
+import openmods.depcheck.printer.IPrinter;
 import openmods.depcheck.printer.ResultPrinter;
 
 import java.io.File;
@@ -51,6 +53,8 @@ public class DependencyChecker {
 		}
 	}
 
+	private Logger logger;
+
 	/*
 	 * Parameters:
 	 * --directories [varargs]: specifies a list of directories where the program should search mods
@@ -65,7 +69,6 @@ public class DependencyChecker {
 	 * If --directories is specified, every other value must be ignored.
 	 * See draft for more information
 	 */
-	// TODO printer
 	// TODO output
 	// TODO no-cache
 	// TODO disable-matcher-fail
@@ -80,12 +83,12 @@ public class DependencyChecker {
 
 	    if (arguments.disableVariedLogging) StaticLoggerBinder.disableVariedLogging();
 
-	    final Logger logger = LoggerFactory.getLogger(DependencyChecker.class);
-	    logger.info("Currently running DependencyChecker from {} with {}", System.getProperty("user.dir"), arguments);
+	    this.logger = LoggerFactory.getLogger(DependencyChecker.class);
+	    this.logger.info("Currently running DependencyChecker from {} with {}", System.getProperty("user.dir"), arguments);
 
 	    for (final String dir : arguments.directories) {
 		    final File topDir = new File(dir);
-		    logger.info("Processing dir: {}", topDir.getAbsolutePath());
+		    this.logger.info("Processing dir: {}", topDir.getAbsolutePath());
 		    final SourceParser depWalker = new SourceParser(topDir);
 		    final SourceDependencies availableDependencies = depWalker.collectAvailableDependencies();
 
@@ -93,7 +96,10 @@ public class DependencyChecker {
 		    new TargetParser(topDir).accept(collector);
 
 		    final List<DependencyResolveResult> results = collector.getResults();
-		    new ResultPrinter().print(new File(topDir, "output.html"), availableDependencies, results);
+
+		    this.getPrinterClass(arguments, topDir).print(new File(topDir, "output.html"), availableDependencies, results);
+
+		    this.logger.info("Operation completed successfully without errors");
 	    }
     }
 
@@ -135,13 +141,7 @@ public class DependencyChecker {
 		    }
 	    }
 
-	    System.out.println(parameters);
-	    System.out.println(varArgs);
-
 	    this.populateResults(result, parameters, varArgs);
-
-	    System.out.println(result);
-
     	return result;
     }
 
@@ -228,6 +228,51 @@ public class DependencyChecker {
     		field.setAccessible(false);
 	    } catch (final IllegalAccessException e) {
     		throw new IllegalStateException(e);
+	    }
+    }
+
+    @Nonnull
+	private IPrinter getPrinterClass(@Nonnull final Parameters parameters, @Nonnull final File currentlyParsingDirectory) {
+    	try {
+    		this.logger.info("Attempting to instantiate printer");
+    		this.logger.trace("Printer supplied: " + parameters.printer);
+    		final Class<?> clazz = Class.forName(parameters.printer);
+    		final Object constructedObject = clazz.getConstructor().newInstance();
+    		final IPrinter printer = IPrinter.class.cast(constructedObject);
+    		if (printer instanceof IConfigurablePrinter) {
+    			this.attemptConfiguration((IConfigurablePrinter) printer, parameters.printerSettings, currentlyParsingDirectory);
+		    }
+    		return printer;
+	    } catch (final ReflectiveOperationException | ClassCastException e) {
+    		this.logger.error("An error has occurred while attempting to load printer {}", parameters.printer, e);
+    		this.logger.error("Falling back to default");
+    		this.logger.trace(ResultPrinter.class.getCanonicalName());
+    		return new ResultPrinter();
+	    }
+    }
+
+    private void attemptConfiguration(@Nonnull final IConfigurablePrinter printer,
+                                      @Nonnull final String settingsFile,
+                                      @Nonnull final File currentDir) {
+    	File settings = new File(currentDir, settingsFile);
+    	if (!settings.exists()) {
+    		this.logger.warn("File not found: {} in {}. Attempting to use fallback", settingsFile, currentDir.getAbsolutePath());
+    		settings = new File(System.getProperty("user.dir"), settingsFile);
+    		if (!settings.exists()) {
+    			this.logger.warn("The specified file {} does not exist in {}. Considering the file as non-existent",
+					    settingsFile, System.getProperty("user.dir"));
+    			settings = null;
+		    }
+	    }
+	    if (settings == null || !settings.canRead()) {
+    		this.logger.warn("Unable to read the given file {}. Skipping it", settings == null? "null" : settings.getAbsolutePath());
+    		settings = null;
+	    }
+	    try {
+		    printer.populateSettings(settings);
+	    } catch (final Throwable t) {
+    		this.logger.error("Error while applying configuration settings", t);
+    		if (printer.isConfigurationNeeded()) throw new RuntimeException("Configuration settings could not be applied", t);
 	    }
     }
 }

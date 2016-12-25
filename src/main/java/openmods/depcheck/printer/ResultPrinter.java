@@ -21,7 +21,9 @@ import com.google.common.base.Joiner;
 import com.google.common.base.Throwables;
 import com.google.common.collect.*;
 
-public class ResultPrinter {
+import javax.annotation.Nonnull;
+
+public class ResultPrinter implements IPrinter {
 
     private static final String STYLE =
             "table {" +
@@ -109,7 +111,7 @@ public class ResultPrinter {
         }
     }
 
-    private static CompatibilityData convertData(List<DependencyResolveResult> results) {
+    private static CompatibilityData convertData(Collection<DependencyResolveResult> results) {
         final CompatibilityData result = new CompatibilityData();
         results.forEach(result::load);
         return result;
@@ -119,7 +121,10 @@ public class ResultPrinter {
         return target + "__" + source + "__" + version;
     }
 
-    public void print(File file, SourceDependencies availableDependencies, List<DependencyResolveResult> results) {
+    @Override
+    public void print(@Nonnull File file,
+                      @Nonnull SourceDependencies availableDependencies,
+                      @Nonnull Collection<DependencyResolveResult> results) {
         try (OutputStream os = new FileOutputStream(file);
                 Writer w = new OutputStreamWriter(os, Charsets.UTF_8)) {
 
@@ -140,7 +145,7 @@ public class ResultPrinter {
         }
     }
 
-    private static List<Tag> createEntries(SourceDependencies availableDependencies, List<DependencyResolveResult> results) {
+    private static List<Tag> createEntries(SourceDependencies availableDependencies, Collection<DependencyResolveResult> results) {
         List<Tag> tags = Lists.newArrayList();
         final CompatibilityData data = convertData(results);
         createSourceEntries(tags, availableDependencies, data);
@@ -221,5 +226,4 @@ public class ResultPrinter {
             });
         });
     }
-
 }
