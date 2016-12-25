@@ -1,4 +1,4 @@
-package openmods.depcheck;
+package openmods.depcheck.parser;
 
 import java.io.*;
 import java.util.Enumeration;
@@ -6,6 +6,7 @@ import java.util.Optional;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
+import openmods.depcheck.visitor.TargetClassBytecodeVisitor;
 import openmods.depcheck.utils.ElementType;
 
 import org.objectweb.asm.ClassReader;

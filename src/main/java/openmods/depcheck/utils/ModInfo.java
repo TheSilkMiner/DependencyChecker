@@ -1,4 +1,4 @@
-package openmods.depcheck;
+package openmods.depcheck.utils;
 
 import java.io.Serializable;
 import java.util.Map;

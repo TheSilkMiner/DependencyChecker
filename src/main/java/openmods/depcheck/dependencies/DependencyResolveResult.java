@@ -1,4 +1,4 @@
-package openmods.depcheck;
+package openmods.depcheck.dependencies;
 
 import java.io.File;
 import java.util.*;

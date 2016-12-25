@@ -1,4 +1,4 @@
-package openmods.depcheck;
+package openmods.depcheck.printer;
 
 import static j2html.TagCreator.*;
 import j2html.tags.ContainerTag;
@@ -8,7 +8,9 @@ import java.io.*;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import openmods.depcheck.DependencyResolveResult.MissingDependencySink;
+import openmods.depcheck.dependencies.DependencyResolveResult;
+import openmods.depcheck.dependencies.DependencyResolveResult.MissingDependencySink;
+import openmods.depcheck.parser.SourceDependencies;
 import openmods.depcheck.utils.TypedElement;
 
 import org.apache.maven.artifact.versioning.ArtifactVersion;

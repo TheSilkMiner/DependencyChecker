@@ -1,4 +1,4 @@
-package openmods.depcheck;
+package openmods.depcheck.parser;
 
 import java.io.*;
 import java.util.Enumeration;
@@ -9,7 +9,9 @@ import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
-import openmods.depcheck.ModInfo.ModRegistrationContext;
+import openmods.depcheck.utils.ModInfo;
+import openmods.depcheck.utils.ModInfo.ModRegistrationContext;
+import openmods.depcheck.visitor.SourceClassBytecodeVisitor;
 
 import org.objectweb.asm.ClassReader;
 import org.slf4j.Logger;
@@ -76,6 +78,13 @@ public class SourceParser {
                     return (SourceDependencies)os.readObject();
                 }
             } catch (Throwable t) {
+                if (t instanceof IOException
+                        && t.getCause() instanceof RuntimeException
+                        && t.getCause().getCause() instanceof ClassNotFoundException) {
+                    logger.warn("Attempted to load cache for invalid class " + t.getCause().getCause().getMessage());
+                    logger.warn("This can be due to various refactorings. If you see this error again, please raise a bug report.");
+                    logger.warn("If this is a one-off error message, you can safely ignore it.");
+                }
                 logger.error("Failed to load source cache from " + cache.getAbsolutePath(), t);
             }
         }

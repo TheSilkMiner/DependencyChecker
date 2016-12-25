@@ -1,8 +1,8 @@
-package openmods.depcheck;
+package openmods.depcheck.visitor;
 
 import java.util.function.Consumer;
 
-import openmods.depcheck.TargetParser.TargetClassVisitor;
+import openmods.depcheck.parser.TargetParser.TargetClassVisitor;
 import openmods.depcheck.utils.ElementType;
 
 import org.objectweb.asm.*;

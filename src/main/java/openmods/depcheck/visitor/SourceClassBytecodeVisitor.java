@@ -1,6 +1,6 @@
-package openmods.depcheck;
+package openmods.depcheck.visitor;
 
-import openmods.depcheck.ModInfo.ModRegistrationContext;
+import openmods.depcheck.utils.ModInfo.ModRegistrationContext;
 import openmods.depcheck.utils.ElementType;
 
 import org.objectweb.asm.*;

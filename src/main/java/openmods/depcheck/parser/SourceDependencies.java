@@ -1,4 +1,4 @@
-package openmods.depcheck;
+package openmods.depcheck.parser;
 
 import java.io.Serializable;
 import java.util.Map;
@@ -7,6 +7,8 @@ import java.util.Optional;
 import java.util.Set;
 
 import com.google.common.collect.Maps;
+
+import openmods.depcheck.utils.ModInfo;
 
 public class SourceDependencies implements Serializable {
     private static final long serialVersionUID = -8421936165213857432L;

@@ -8,6 +8,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.impl.StaticLoggerBinder;
 
+import openmods.depcheck.dependencies.DependencyCollector;
+import openmods.depcheck.dependencies.DependencyResolveResult;
+import openmods.depcheck.parser.SourceDependencies;
+import openmods.depcheck.parser.SourceParser;
+import openmods.depcheck.parser.TargetParser;
+import openmods.depcheck.printer.ResultPrinter;
+
 import java.io.File;
 import java.lang.reflect.Field;
 import java.util.Arrays;
@@ -69,7 +76,6 @@ public class DependencyChecker {
 
     private void run(@Nonnull final String... args) {
     	Thread.currentThread().setName("Software Thread");
-
     	final Parameters arguments = this.parseArguments(args);
 
 	    if (arguments.disableVariedLogging) StaticLoggerBinder.disableVariedLogging();
@@ -83,7 +89,7 @@ public class DependencyChecker {
 		    final SourceParser depWalker = new SourceParser(topDir);
 		    final SourceDependencies availableDependencies = depWalker.collectAvailableDependencies();
 
-		    DependencyCollector collector = new DependencyCollector(availableDependencies);
+		    final DependencyCollector collector = new DependencyCollector(availableDependencies);
 		    new TargetParser(topDir).accept(collector);
 
 		    final List<DependencyResolveResult> results = collector.getResults();
@@ -144,7 +150,7 @@ public class DependencyChecker {
     	params.directories = Lists.newArrayList();
     	params.directories.add("data");
     	//noinspection SpellCheckingInspection
-	    params.printer = "openmods.depcheck.ResultPrinter";
+	    params.printer = "openmods.depcheck.printer.ResultPrinter";
 	    params.output = "output.html";
 	    params.noCache = false;
 	    params.disableMatcherFail = false;

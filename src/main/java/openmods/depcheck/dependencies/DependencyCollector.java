@@ -1,15 +1,16 @@
-package openmods.depcheck;
+package openmods.depcheck.dependencies;
 
 import java.io.File;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
-import openmods.depcheck.DependencyResolveResult.MissingClassDependencies;
-import openmods.depcheck.TargetParser.TargetClassVisitor;
-import openmods.depcheck.TargetParser.TargetModContentsVisitor;
-import openmods.depcheck.TargetParser.TargetModVisitor;
+import openmods.depcheck.parser.SourceDependencies;
+import openmods.depcheck.parser.TargetParser.TargetClassVisitor;
+import openmods.depcheck.parser.TargetParser.TargetModContentsVisitor;
+import openmods.depcheck.parser.TargetParser.TargetModVisitor;
 import openmods.depcheck.utils.ElementType;
+import openmods.depcheck.utils.ModInfo;
 import openmods.depcheck.utils.TypedElement;
 
 import org.slf4j.Logger;
@@ -23,10 +24,10 @@ public class DependencyCollector implements TargetModVisitor {
     private static final Logger logger = LoggerFactory.getLogger(DependencyCollector.class);
 
     private static class ClassDependencyVisitor implements TargetClassVisitor {
-        private final MissingClassDependencies missingDependencies;
+        private final DependencyResolveResult.MissingClassDependencies missingDependencies;
         private final SourceDependencies availableDependencies;
 
-        public ClassDependencyVisitor(SourceDependencies availableDependencies, MissingClassDependencies missingDependencies) {
+        public ClassDependencyVisitor(SourceDependencies availableDependencies, DependencyResolveResult.MissingClassDependencies missingDependencies) {
             this.availableDependencies = availableDependencies;
             this.missingDependencies = missingDependencies;
         }
