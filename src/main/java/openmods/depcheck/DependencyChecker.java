@@ -68,13 +68,14 @@ public class DependencyChecker {
     }
 
     private void run(@Nonnull final String... args) {
-    	final Parameters arguments = this.parseArguments(args);
+    	Thread.currentThread().setName("Software Thread");
 
-	    if (arguments.directories.isEmpty()) arguments.directories.add("data");
+    	final Parameters arguments = this.parseArguments(args);
 
 	    if (arguments.disableVariedLogging) StaticLoggerBinder.disableVariedLogging();
 
 	    final Logger logger = LoggerFactory.getLogger(DependencyChecker.class);
+	    logger.info("Currently running DependencyChecker from {} with {}", System.getProperty("user.dir"), arguments);
 
 	    for (final String dir : arguments.directories) {
 		    final File topDir = new File(dir);
@@ -115,6 +116,7 @@ public class DependencyChecker {
     			if (Objects.equals("", previousArgument)) this.throwCommandUsageException(i, arg, result);
     			if (insideVarargs) varArgs.get(previousArgument).add(arg);
     			else parameters.put(previousArgument, arg);
+    			if (!insideVarargs) previousArgument = "";
     			continue;
 		    }
 		    insideVarargs = false;
@@ -140,6 +142,7 @@ public class DependencyChecker {
     @Contract("null -> fail")
     private void populateDefaults(@Nonnull final Parameters params) {
     	params.directories = Lists.newArrayList();
+    	params.directories.add("data");
     	//noinspection SpellCheckingInspection
 	    params.printer = "openmods.depcheck.ResultPrinter";
 	    params.output = "output.html";
@@ -170,7 +173,7 @@ public class DependencyChecker {
     	final String message = "Illegal argument \"%s\" at index %s\nCurrently parsed parameters: %s";
     	throw new IllegalArgumentException(String.format(message,
 			    parsing,
-			    index == -1? Integer.toString(index) : "*UNKNOWN*",
+			    index != -1? Integer.toString(index) : "*UNKNOWN*",
 			    params));
     }
 
