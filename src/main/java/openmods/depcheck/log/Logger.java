@@ -77,10 +77,13 @@ public class Logger {
 				} else {
 					System.out.write(message.getBytes());
 				}
+
+				if (record.getThrown() != null) {
+					record.getThrown().printStackTrace((record.getLevel().intValue() >= Level.WARNING.intValue())? System.err : System.out);
+				}
 			} catch (final Exception exception) {
 				this.reportError(null, exception, ErrorManager.FORMAT_FAILURE);
 			}
-
 		}
 
 		@Override
