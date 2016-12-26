@@ -4,6 +4,7 @@
 
 # input
 data/
+aliases.txt
 
 # Gradle
 .gradle/

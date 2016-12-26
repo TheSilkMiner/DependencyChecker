@@ -16,6 +16,7 @@ import openmods.depcheck.parser.TargetParser;
 import openmods.depcheck.printer.IConfigurablePrinter;
 import openmods.depcheck.printer.IPrinter;
 import openmods.depcheck.printer.ResultPrinter;
+import openmods.depcheck.utils.AliasesMap;
 
 import java.io.File;
 import java.lang.reflect.Field;
@@ -72,7 +73,6 @@ public class DependencyChecker {
 	// TODO output
 	// TODO no-cache
 	// TODO disable-matcher-fail
-	// TODO printer-settings
     public static void main(final String... args) {
     	new Thread(() -> new DependencyChecker().run(args)).start();
     }
@@ -236,7 +236,7 @@ public class DependencyChecker {
     	try {
     		this.logger.info("Attempting to instantiate printer");
     		this.logger.trace("Printer supplied: " + parameters.printer);
-    		final Class<?> clazz = Class.forName(parameters.printer);
+    		final Class<?> clazz = this.attemptToGetClass(parameters.printer, currentlyParsingDirectory);
     		final Object constructedObject = clazz.getConstructor().newInstance();
     		final IPrinter printer = IPrinter.class.cast(constructedObject);
     		if (printer instanceof IConfigurablePrinter) {
@@ -249,6 +249,24 @@ public class DependencyChecker {
     		this.logger.trace(ResultPrinter.class.getCanonicalName());
     		return new ResultPrinter();
 	    }
+    }
+
+    @Nonnull
+    private Class<?> attemptToGetClass(@Nonnull final String className, @Nonnull final File currentDir) throws ReflectiveOperationException {
+    	try {
+    		return Class.forName(className);
+	    } catch (final ClassNotFoundException e) {
+    		this.logger.warn("Class not found: {}. Attempting to look for an alias", className, e);
+	    }
+
+	    this.logger.info("Considering {} as an alias. Attempting resolution", className);
+	    return Class.forName(AliasesMap.of(currentDir).getClassForAlias(className).orElseThrow(this::get));
+    }
+
+    @Contract(pure = true)
+    @Nonnull
+    private ReflectiveOperationException get() {
+    	return new ReflectiveOperationException("Unable to load aliased printer. Is the alias correct? Or is it even registered?");
     }
 
     private void attemptConfiguration(@Nonnull final IConfigurablePrinter printer,
