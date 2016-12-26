@@ -158,6 +158,7 @@ public class Logger {
 		final LogRecord record = new LogRecord(level, msg);
 		record.setThrown(t);
 		record.setLoggerName(this.logger.getName());
+		record.setSourceClassName(this.logger.getName());
 		this.logger.log(record);
 	}
 
