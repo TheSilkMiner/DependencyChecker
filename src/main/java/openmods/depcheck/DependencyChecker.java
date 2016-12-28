@@ -70,7 +70,6 @@ public class DependencyChecker {
 	 * If --directories is specified, every other value must be ignored.
 	 * See draft for more information
 	 */
-	// TODO output
 	// TODO no-cache
 	// TODO disable-matcher-fail
     public static void main(final String... args) {
@@ -97,7 +96,10 @@ public class DependencyChecker {
 
 		    final List<DependencyResolveResult> results = collector.getResults();
 
-		    this.getPrinterClass(arguments, topDir).print(new File(topDir, "output.html"), availableDependencies, results);
+		    this.getPrinterClass(arguments, topDir).print(
+		    		java.nio.file.Paths.get(arguments.output).isAbsolute()? new File(arguments.output) : new File(topDir, arguments.output),
+				    availableDependencies,
+				    results);
 
 		    this.logger.info("Operation completed successfully without errors");
 	    }
