@@ -17,6 +17,7 @@ import openmods.depcheck.printer.IConfigurablePrinter;
 import openmods.depcheck.printer.IPrinter;
 import openmods.depcheck.printer.ResultPrinter;
 import openmods.depcheck.utils.AliasesMap;
+import openmods.depcheck.utils.Benchmark;
 
 import java.io.File;
 import java.lang.reflect.Field;
@@ -87,18 +88,30 @@ public class DependencyChecker {
 	    for (final String dir : arguments.directories) {
 		    final File topDir = new File(dir);
 		    this.logger.info("Processing dir: {}", topDir.getAbsolutePath());
+		    final Benchmark dirProcessing = Benchmark.create("Directory processing", Double.MAX_VALUE, Double.MAX_VALUE)
+				    .orElseThrow(RuntimeException::new);
+		    dirProcessing.begin();
 		    final SourceParser depWalker = new SourceParser(topDir, arguments.noCache);
 		    final SourceDependencies availableDependencies = depWalker.collectAvailableDependencies();
+		    dirProcessing.end();
 
+		    final Benchmark targetProcessing = Benchmark.create("Target processing", Double.MAX_VALUE, Double.MAX_VALUE)
+				    .orElseThrow(RuntimeException::new);
+		    targetProcessing.begin();
 		    final DependencyCollector collector = new DependencyCollector(availableDependencies);
 		    new TargetParser(topDir).accept(collector);
+		    targetProcessing.end();
 
 		    final List<DependencyResolveResult> results = collector.getResults();
 
+		    final Benchmark printing = Benchmark.create("Printing results", 0.7D, 1.0D)
+				    .orElseThrow(RuntimeException::new);
+		    printing.begin();
 		    this.getPrinterClass(arguments, topDir).print(
 		    		java.nio.file.Paths.get(arguments.output).isAbsolute()? new File(arguments.output) : new File(topDir, arguments.output),
 				    availableDependencies,
 				    results);
+		    printing.end();
 
 		    this.logger.info("Operation completed successfully without errors");
 	    }
@@ -107,6 +120,9 @@ public class DependencyChecker {
     @Contract(value = "!null -> !null; null -> fail", pure = true)
     @Nonnull
     private Parameters parseArguments(@Nonnull final String... args) {
+    	final Benchmark benchmark = Benchmark.create("Parameters parsing", 0.2D, 0.5D)
+			    .orElseThrow(RuntimeException::new);
+    	benchmark.begin();
     	final Parameters result = new Parameters();
     	this.populateDefaults(result);
 
@@ -143,6 +159,7 @@ public class DependencyChecker {
 	    }
 
 	    this.populateResults(result, parameters, varArgs);
+    	benchmark.end();
     	return result;
     }
 
