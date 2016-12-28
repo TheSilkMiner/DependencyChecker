@@ -70,7 +70,6 @@ public class DependencyChecker {
 	 * If --directories is specified, every other value must be ignored.
 	 * See draft for more information
 	 */
-	// TODO no-cache
 	// TODO disable-matcher-fail
     public static void main(final String... args) {
     	new Thread(() -> new DependencyChecker().run(args)).start();
@@ -88,7 +87,7 @@ public class DependencyChecker {
 	    for (final String dir : arguments.directories) {
 		    final File topDir = new File(dir);
 		    this.logger.info("Processing dir: {}", topDir.getAbsolutePath());
-		    final SourceParser depWalker = new SourceParser(topDir);
+		    final SourceParser depWalker = new SourceParser(topDir, arguments.noCache);
 		    final SourceDependencies availableDependencies = depWalker.collectAvailableDependencies();
 
 		    final DependencyCollector collector = new DependencyCollector(availableDependencies);

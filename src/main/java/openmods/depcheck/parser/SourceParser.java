@@ -25,6 +25,8 @@ import com.google.gson.annotations.SerializedName;
 import de.ruedigermoeller.serialization.FSTObjectInput;
 import de.ruedigermoeller.serialization.FSTObjectOutput;
 
+import javax.annotation.Nonnull;
+
 public class SourceParser {
 
     private static final Logger logger = LoggerFactory.getLogger(SourceParser.class);
@@ -64,12 +66,25 @@ public class SourceParser {
     }
 
     private final File topDir;
+    private final boolean ignoreCache;
 
+    // Keeping it for backwards compatibility
+	@SuppressWarnings("unused")
     public SourceParser(File topDir) {
-        this.topDir = topDir;
+    	this(topDir, false);
     }
 
-    private static SourceDependencies getOrCreateSourceDependencies(File cache) {
+    public SourceParser(@Nonnull final File topDir, final boolean ignoreCache) {
+        this.topDir = topDir;
+        this.ignoreCache = ignoreCache;
+    }
+
+    private SourceDependencies getOrCreateSourceDependencies(File cache) {
+	    if (this.ignoreCache) {
+	    	logger.info("Ignoring cache data as per request");
+	    	return new SourceDependencies();
+	    }
+
         if (cache.isFile()) {
             logger.info("Loading source cache from " + cache.getAbsolutePath());
             try {
@@ -92,7 +107,12 @@ public class SourceParser {
         return new SourceDependencies();
     }
 
-    private static void storeCache(File cache, SourceDependencies deps) {
+    private void storeCache(File cache, SourceDependencies deps) {
+		if (this.ignoreCache) {
+			logger.info("Ignoring cache storage as per request");
+			return;
+		}
+
         if (deps.isUpdated()) {
             try {
                 try (FileOutputStream output = new FileOutputStream(cache);
@@ -111,7 +131,7 @@ public class SourceParser {
 
         final File cache = new File(topDir, "cache.ser");
 
-        final SourceDependencies result = getOrCreateSourceDependencies(cache);
+        final SourceDependencies result = this.getOrCreateSourceDependencies(cache);
 
         for (File f : modsDir.listFiles()) {
             if (f.isDirectory())
