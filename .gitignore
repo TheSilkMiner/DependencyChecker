@@ -5,6 +5,7 @@
 # input
 data/
 aliases.txt
+settings.json
 
 # Gradle
 .gradle/

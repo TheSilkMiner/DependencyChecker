@@ -120,6 +120,8 @@ public class AliasesMap {
 		if (allAliases.size() != 1) {
 			if (allAliases.size() < 0) LOGGER.info("No aliases found for " + name);
 			else LOGGER.info("Found {} aliases for {} {}. Returning the first available...", allAliases.size(), name, allAliases);
+		} else {
+			LOGGER.info("Found {} in the aliases namespace for {}", name, allAliases);
 		}
 		return allAliases.stream().findFirst(); // Hacky way of using streams, but who cares?
 	}
