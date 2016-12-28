@@ -65,6 +65,8 @@ public class SourceParser {
 
     }
 
+    private static boolean matcherFail = true;
+
     private final File topDir;
     private final boolean ignoreCache;
 
@@ -77,6 +79,10 @@ public class SourceParser {
     public SourceParser(@Nonnull final File topDir, final boolean ignoreCache) {
         this.topDir = topDir;
         this.ignoreCache = ignoreCache;
+    }
+
+    public static void disableMatcherFailure() {
+		matcherFail = false;
     }
 
     private SourceDependencies getOrCreateSourceDependencies(File cache) {
@@ -154,9 +160,19 @@ public class SourceParser {
             final ModInfoMeta meta = GSON.fromJson(reader, ModInfoMeta.class);
             final ModInfo mod = result.addMod(meta.pkgPrefix, meta.mod);
 
-            for (File f : modDir.listFiles((f, name) -> new File(f, name).isFile() && name.endsWith(".jar")))
-                scanJarFile(meta, mod, f);
+            for (File f : modDir.listFiles((f, name) -> new File(f, name).isFile() && name.endsWith(".jar"))) {
+	            try {
+	            	scanJarFile(meta, mod, f);
+	            } catch (final IllegalStateException e) {
+	            	if (matcherFail) throw e;
 
+	            	if (!e.getMessage().endsWith("can't be matched")) throw e;
+	            	logger.warn("Found invalid jar file {} in directory {}", f.getName(), modDir.getAbsolutePath());
+	            	logger.warn("It will now be skipped");
+	            	logger.warn("**You should remove it if possible: it may lead to future errors!**");
+	            	logger.warn("Exception thrown:", e);
+	            }
+            }
         }
     }
 

@@ -71,7 +71,6 @@ public class DependencyChecker {
 	 * If --directories is specified, every other value must be ignored.
 	 * See draft for more information
 	 */
-	// TODO disable-matcher-fail
     public static void main(final String... args) {
     	new Thread(() -> new DependencyChecker().run(args)).start();
     }
@@ -92,6 +91,7 @@ public class DependencyChecker {
 				    .orElseThrow(RuntimeException::new);
 		    dirProcessing.begin();
 		    final SourceParser depWalker = new SourceParser(topDir, arguments.noCache);
+		    if (arguments.disableMatcherFail) SourceParser.disableMatcherFailure();
 		    final SourceDependencies availableDependencies = depWalker.collectAvailableDependencies();
 		    dirProcessing.end();
 
