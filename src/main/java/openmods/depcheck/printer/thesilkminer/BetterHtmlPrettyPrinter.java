@@ -95,10 +95,14 @@ public class BetterHtmlPrettyPrinter implements IConfigurablePrinter {
 		@SerializedName("useImages")
 		private boolean useImages;
 
+		@SerializedName("removeExtensions")
+		private boolean noJar;
+
 		{
 			this.preferFiraCode = true;
 			this.fontString = "\"Courier New\", Courier, monospace";
 			this.useImages = true;
+			this.noJar = false;
 		}
 
 		@Override
@@ -398,7 +402,7 @@ public class BetterHtmlPrettyPrinter implements IConfigurablePrinter {
 											.childList(
 													allVersions.stream()
 															.map(it -> this.asBuilder(Th.class)
-																	.content(it.toString())
+																	.content(this.toString(it))
 																	.build())
 															.collect(Collectors.toList())
 											)
@@ -413,6 +417,14 @@ public class BetterHtmlPrettyPrinter implements IConfigurablePrinter {
 	}
 
 	@Nonnull
+	private <T> String toString(@Nullable final T it) {
+		if (it == null) return "$null$";
+		final String toString = it.toString();
+		if (this.settings.noJar && toString.endsWith(".jar")) return toString.substring(0, toString.length() - ".jar".length());
+		return toString;
+	}
+
+	@Nonnull
 	private Collection<HtmlTag> constructSummaryRows(@Nonnull final String source,
 	                                                 @Nonnull final List<File> allTargets,
 	                                                 @Nonnull final List<ArtifactVersion> allVersions,
@@ -420,7 +432,7 @@ public class BetterHtmlPrettyPrinter implements IConfigurablePrinter {
 		return allTargets.stream()
 				.map(target -> this.asBuilder(Tr.class)
 						.child(this.asBuilder(Td.class)
-								.content(target.getName())
+								.content(this.toString(target.getName()))
 								.build())
 						.childList(this.constructSummaryRow(source, allVersions, table, target))
 						.build())
@@ -484,7 +496,7 @@ public class BetterHtmlPrettyPrinter implements IConfigurablePrinter {
 	                            @Nonnull final String source,
 	                            @Nonnull final ArtifactVersion version,
 	                            @Nonnull final String separator) {
-		return String.format("%s%s%s%s%s", target, separator, source, separator, version);
+		return String.format("%s%s%s%s%s", this.toString(target), separator, this.toString(source), separator, this.toString(version));
 	}
 
 	private void constructAvailableEntry(@Nonnull final List<HtmlTag> tags) {
