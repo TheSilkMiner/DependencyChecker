@@ -58,7 +58,6 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.nio.charset.Charset;
 import java.nio.charset.IllegalCharsetNameException;
 import java.nio.charset.UnsupportedCharsetException;
@@ -264,8 +263,7 @@ public class BetterHtmlPrettyPrinter implements IConfigurablePrinter {
 		this.handleFileDeletionAndCreation(path);
 
 		final long begin = System.nanoTime();
-		try (final BufferedWriter unwrappedOut = Files.newBufferedWriter(path, this.getCharset());
-			final PrintWriter out = new PrintWriter(unwrappedOut, true)) {
+		try (final BufferedWriter out = Files.newBufferedWriter(path, this.getCharset())) {
 			this.write(out, availableDependencies, results);
 		} catch (final IOException e) {
 			LOG.error("An error has occurred while writing the file", e);
@@ -315,9 +313,13 @@ public class BetterHtmlPrettyPrinter implements IConfigurablePrinter {
 		}
 	}
 
-	private void write(final PrintWriter out, final SourceDependencies dependencies, final Collection<DependencyResolveResult> results) {
-		out.print(this.constructHtml(dependencies, results));
-		out.flush();
+	private void write(final BufferedWriter out, final SourceDependencies dependencies, final Collection<DependencyResolveResult> results) throws IOException {
+		try {
+			out.write(this.constructHtml(dependencies, results).toString());
+			out.flush();
+		} catch (final IOException e) {
+			throw new IOException("An error has occurred while attempting to write on the specified file", e);
+		}
 	}
 
 	@Nonnull
