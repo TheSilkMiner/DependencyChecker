@@ -38,6 +38,7 @@ public class DependencyChecker {
 		private boolean disableMatcherFail;
 		private String printerSettings;
 		private boolean disableVariedLogging;
+		private boolean help;
 
 		// Mainly for debug purposes
 		@Nonnull
@@ -51,26 +52,15 @@ public class DependencyChecker {
 					.add("disableMatcherFail", this.disableMatcherFail)
 					.add("printerSettings", this.printerSettings)
 					.add("disableVariedLogging", this.disableVariedLogging)
+					.add("help", this.help)
 					.toString();
 		}
 	}
 
+	private static final String VERSION = "0.1";
+
 	private Logger logger;
 
-	/*
-	 * Parameters:
-	 * --directories [varargs]: specifies a list of directories where the program should search mods
-	 * --printer [class]: specifies the class the printer should use (default to ResultPrinter)
-	 * --output [string]: specifies the output file path
-	 * --no-cache: disables the usage of the cache if available
-	 * --disable-matcher-fail: software will not fail if a file is unable to be matched
-	 * --printer-settings [string]: specifies a file with all the various printer configurations (if available)
-	 * --disable-varied-logging: uses the previous logging level (everything to System.err)
-	 *
-	 * (In case of no parameters, everything defaults to --directories)
-	 * If --directories is specified, every other value must be ignored.
-	 * See draft for more information
-	 */
     public static void main(final String... args) {
     	new Thread(() -> new DependencyChecker().run(args)).start();
     }
@@ -82,39 +72,14 @@ public class DependencyChecker {
 	    if (arguments.disableVariedLogging) StaticLoggerBinder.disableVariedLogging();
 
 	    this.logger = LoggerFactory.getLogger(DependencyChecker.class);
-	    this.logger.info("Currently running DependencyChecker from {} with {}", System.getProperty("user.dir"), arguments);
+	    this.logger.info("Currently running DependencyChecker {} from {} with {}", VERSION, System.getProperty("user.dir"), arguments);
 
-	    for (final String dir : arguments.directories) {
-		    final File topDir = new File(dir);
-		    this.logger.info("Processing dir: {}", topDir.getAbsolutePath());
-		    final Benchmark dirProcessing = Benchmark.create("Directory processing", Double.MAX_VALUE, Double.MAX_VALUE)
-				    .orElseThrow(RuntimeException::new);
-		    dirProcessing.begin();
-		    final SourceParser depWalker = new SourceParser(topDir, arguments.noCache);
-		    if (arguments.disableMatcherFail) SourceParser.disableMatcherFailure();
-		    final SourceDependencies availableDependencies = depWalker.collectAvailableDependencies();
-		    dirProcessing.end();
-
-		    final Benchmark targetProcessing = Benchmark.create("Target processing", Double.MAX_VALUE, Double.MAX_VALUE)
-				    .orElseThrow(RuntimeException::new);
-		    targetProcessing.begin();
-		    final DependencyCollector collector = new DependencyCollector(availableDependencies);
-		    new TargetParser(topDir).accept(collector);
-		    targetProcessing.end();
-
-		    final List<DependencyResolveResult> results = collector.getResults();
-
-		    final Benchmark printing = Benchmark.create("Printing results", 0.7D, 1.0D)
-				    .orElseThrow(RuntimeException::new);
-		    printing.begin();
-		    this.getPrinterClass(arguments, topDir).print(
-		    		java.nio.file.Paths.get(arguments.output).isAbsolute()? new File(arguments.output) : new File(topDir, arguments.output),
-				    availableDependencies,
-				    results);
-		    printing.end();
-
-		    this.logger.info("Operation completed successfully without errors");
+	    if (arguments.help) {
+	    	this.showHelp();
+	    	return;
 	    }
+
+	    this.execute(arguments);
     }
 
     @Contract(value = "!null -> !null; null -> fail", pure = true)
@@ -174,6 +139,7 @@ public class DependencyChecker {
 	    params.disableMatcherFail = false;
 	    params.printerSettings = "settings.json";
 	    params.disableVariedLogging = false;
+	    params.help = false;
     }
 
     @Contract(value = "null -> fail", pure = true)
@@ -246,6 +212,74 @@ public class DependencyChecker {
     		field.setAccessible(false);
 	    } catch (final IllegalAccessException e) {
     		throw new IllegalStateException(e);
+	    }
+    }
+
+    private void showHelp() {
+	    final Parameters defaults = new Parameters();
+	    this.populateDefaults(defaults);
+
+	    this.logger.info("Showing help");
+	    for (int i = 0; i < 3; ++i) this.logger.info("");
+    	this.logger.info("********* DEPENDENCY CHECKER DETAILS *********");
+    	this.logger.info("Dependency Checker version " + VERSION);
+    	this.logger.info("Developed by boq");
+    	this.logger.info("Run directory: " + System.getProperty("user.dir"));
+    	this.logger.info("Java version: " + System.getProperty("java.version") + " (by " + System.getProperty("java.vendor") + ")");
+    	this.logger.info("JVM version: " + System.getProperty("java.vm.version") + " (by " + System.getProperty("java.vm.vendor") + ")");
+    	this.logger.info("OS: " + System.getProperty("os.name") + " " + System.getProperty("os.version") + " (" + System.getProperty("os.arch") + ")");
+    	this.logger.info("");
+    	this.logger.info("********* DEPENDENCY CHECKER HELP *********");
+    	this.logger.info("NOTE: Square brackets indicate optional arguments, curly brackets needed ones");
+    	this.logger.info("");
+    	this.logger.info("USAGE: ./DependencyChecker [arguments]");
+    	this.logger.info("");
+    	this.logger.info("ARGUMENTS: ");
+    	this.logger.info("--directories {directories}    Specifies the working directories of the software. Defaults to " + defaults.directories);
+    	this.logger.info("--printer [class]              Specifies the class of the printer to use. Defaults to " + defaults.printer);
+    	this.logger.info("--printer-settings [file]      Specifies the printer settings file path. Defaults to " + defaults.printerSettings);
+    	this.logger.info("--output [file]                Specifies the output file for the scan results. Defaults to " + defaults.output);
+    	this.logger.info("NOTE: If no argument is specified, everything defaults to --directories");
+	    this.logger.info("");
+	    this.logger.info("SWITCHES: ");
+    	this.logger.info("--no-cache                  Disables the entire caching mechanism: cache isn't used if available nor stored");
+    	this.logger.info("--disable-matcher-fail      Disables software failure in case an illegally named file is found in the working directory");
+    	this.logger.info("--disable-varied-logging    Uses the previous logging implementation (JDK default) instead of the custom solution");
+    	this.logger.info("--help                      Shows this help screen. If this switch is given, everything else is ignored.");
+	    for (int i = 0; i < 3; ++i) this.logger.info("");
+    }
+
+    private void execute(@Nonnull final Parameters arguments) {
+	    for (final String dir : arguments.directories) {
+		    final File topDir = new File(dir);
+		    this.logger.info("Processing dir: {}", topDir.getAbsolutePath());
+		    final Benchmark dirProcessing = Benchmark.create("Directory processing", Double.MAX_VALUE, Double.MAX_VALUE)
+				    .orElseThrow(RuntimeException::new);
+		    dirProcessing.begin();
+		    final SourceParser depWalker = new SourceParser(topDir, arguments.noCache);
+		    if (arguments.disableMatcherFail) SourceParser.disableMatcherFailure();
+		    final SourceDependencies availableDependencies = depWalker.collectAvailableDependencies();
+		    dirProcessing.end();
+
+		    final Benchmark targetProcessing = Benchmark.create("Target processing", Double.MAX_VALUE, Double.MAX_VALUE)
+				    .orElseThrow(RuntimeException::new);
+		    targetProcessing.begin();
+		    final DependencyCollector collector = new DependencyCollector(availableDependencies);
+		    new TargetParser(topDir).accept(collector);
+		    targetProcessing.end();
+
+		    final List<DependencyResolveResult> results = collector.getResults();
+
+		    final Benchmark printing = Benchmark.create("Printing results", 0.7D, 1.0D)
+				    .orElseThrow(RuntimeException::new);
+		    printing.begin();
+		    this.getPrinterClass(arguments, topDir).print(
+				    java.nio.file.Paths.get(arguments.output).isAbsolute()? new File(arguments.output) : new File(topDir, arguments.output),
+				    availableDependencies,
+				    results);
+		    printing.end();
+
+		    this.logger.info("Operation completed successfully without errors");
 	    }
     }
 
