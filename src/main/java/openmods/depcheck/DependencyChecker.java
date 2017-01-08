@@ -31,7 +31,7 @@ import javax.annotation.Nullable;
 public class DependencyChecker {
 
 	private static final class Parameters {
-		private List<String> directories = Lists.newArrayList();
+		private List<String> directories;
 		private String printer;
 		private String output;
 		private boolean noCache;
@@ -44,13 +44,13 @@ public class DependencyChecker {
 		@Override
 		public String toString() {
 			return MoreObjects.toStringHelper(this)
-					.add("directories", directories)
-					.add("printer", printer)
-					.add("output", output)
-					.add("noCache", noCache)
-					.add("disableMatcherFail", disableMatcherFail)
-					.add("printerSettings", printerSettings)
-					.add("disableVariedLogging", disableVariedLogging)
+					.add("directories", this.directories)
+					.add("printer", this.printer)
+					.add("output", this.output)
+					.add("noCache", this.noCache)
+					.add("disableMatcherFail", this.disableMatcherFail)
+					.add("printerSettings", this.printerSettings)
+					.add("disableVariedLogging", this.disableVariedLogging)
 					.toString();
 		}
 	}
@@ -65,7 +65,7 @@ public class DependencyChecker {
 	 * --no-cache: disables the usage of the cache if available
 	 * --disable-matcher-fail: software will not fail if a file is unable to be matched
 	 * --printer-settings [string]: specifies a file with all the various printer configurations (if available)
-	 * --disable-varied-logging: Uses the previous (current as of now) logging level (everything to System.err)
+	 * --disable-varied-logging: uses the previous logging level (everything to System.err)
 	 *
 	 * (In case of no parameters, everything defaults to --directories)
 	 * If --directories is specified, every other value must be ignored.

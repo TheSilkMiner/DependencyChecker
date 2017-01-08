@@ -5,6 +5,10 @@ import org.slf4j.spi.LoggerFactoryBinder;
 
 import openmods.depcheck.log.LoggerFactory;
 
+import java.util.Arrays;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
 /**
  * Binder to our custom logging.
  *
@@ -31,7 +35,7 @@ import openmods.depcheck.log.LoggerFactory;
  */
 public class StaticLoggerBinder implements LoggerFactoryBinder {
 
-	private static StaticLoggerBinder SINGLETON;
+	private static StaticLoggerBinder singleton;
 
 	@SuppressWarnings("unused")
 	public static String REQUESTED_API_VERSION = "1.6.99";
@@ -44,8 +48,8 @@ public class StaticLoggerBinder implements LoggerFactoryBinder {
 
 	@SuppressWarnings("WeakerAccess")
 	public static StaticLoggerBinder getSingleton() {
-		if (SINGLETON == null) SINGLETON = new StaticLoggerBinder();
-		return SINGLETON;
+		if (singleton == null) singleton = new StaticLoggerBinder();
+		return singleton;
 	}
 
 	public static void disableVariedLogging() {

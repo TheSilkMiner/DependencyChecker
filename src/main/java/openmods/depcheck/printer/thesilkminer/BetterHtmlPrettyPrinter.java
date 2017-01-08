@@ -60,6 +60,8 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.charset.Charset;
+import java.nio.charset.IllegalCharsetNameException;
+import java.nio.charset.UnsupportedCharsetException;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -98,19 +100,26 @@ public class BetterHtmlPrettyPrinter implements IConfigurablePrinter {
 		@SerializedName("removeExtensions")
 		private boolean noJar;
 
+		@SerializedName("charset")
+		private String charset;
+
 		{
 			this.preferFiraCode = true;
 			this.fontString = "\"Courier New\", Courier, monospace";
 			this.useImages = true;
 			this.noJar = false;
+			this.charset = "UTF-8";
 		}
 
+		@Nonnull
 		@Override
 		public String toString() {
 			return MoreObjects.toStringHelper(this)
-					.add("preferFiraCode", preferFiraCode)
-					.add("fontString", fontString)
-					.add("useImages", useImages)
+					.add("preferFiraCode", this.preferFiraCode)
+					.add("fontString", this.fontString)
+					.add("useImages", this.useImages)
+					.add("noJar", this.noJar)
+					.add("charset", this.charset)
 					.toString();
 		}
 	}
@@ -255,7 +264,7 @@ public class BetterHtmlPrettyPrinter implements IConfigurablePrinter {
 		this.handleFileDeletionAndCreation(path);
 
 		final long begin = System.nanoTime();
-		try (final BufferedWriter unwrappedOut = Files.newBufferedWriter(path, Charset.defaultCharset());
+		try (final BufferedWriter unwrappedOut = Files.newBufferedWriter(path, this.getCharset());
 			final PrintWriter out = new PrintWriter(unwrappedOut, true)) {
 			this.write(out, availableDependencies, results);
 		} catch (final IOException e) {
@@ -283,6 +292,26 @@ public class BetterHtmlPrettyPrinter implements IConfigurablePrinter {
 			LOG.error("The given file already exists: I guess it wasn't deleted correctly previously. Hopefully it will work", e);
 		} catch (final IOException e) {
 			LOG.error("An error has occurred while creating the file. This may crash the entire printer", e);
+		}
+	}
+
+	@Nonnull
+	private Charset getCharset() {
+		if (!Charset.isSupported(this.settings.charset)) {
+			LOG.error("Specified charset {} is not supported by the current system. Reverting to default ({})",
+					this.settings.charset,
+					Charset.defaultCharset());
+			return Charset.defaultCharset();
+		}
+		LOG.info("Attempting charset resolution");
+		try {
+			final Charset it = Charset.forName(this.settings.charset);
+			LOG.info("Successfully resolved charset. Using {}", it);
+			return it;
+		} catch (final IllegalCharsetNameException | UnsupportedCharsetException e) {
+			LOG.warn("Charset resolution failed due to an exception. Reverting to default ({})", Charset.defaultCharset());
+			LOG.warn("Exception: ", e);
+			return Charset.defaultCharset();
 		}
 	}
 
